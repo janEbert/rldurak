@@ -32,7 +32,7 @@ class Field:
         to_take = self.attack_cards[:]
         for (att_card, def_card) in self.defended_pairs:
             to_take.extend([att_card, def_card])
-        clear()
+        self.clear()
         return to_take
 
     def values_on_field(self, cards):

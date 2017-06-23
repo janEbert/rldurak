@@ -3,6 +3,7 @@ from random import shuffle
 values = [str(x) for x in range(2, 10)] + ['T', 'J', 'Q', 'K', 'A']
 value_dict = dict(zip(values, range(13)))
 suits = ['C', 'S', 'H', 'D']
+suit_dict = dict(zip(suits, range(4)))
 
 
 def same_value(cards):
@@ -31,6 +32,7 @@ class Card:
         self.value = value;
         self.suit = suit;
         self.num_value = value_dict[self.value]
+        self.num_suit = suit_dict[self.suit]
 
 
 class Deck:

@@ -1,6 +1,8 @@
 import deck, player, field
 import numpy as np
 
+from itertools import chain
+
 
 class Game:
 
@@ -38,10 +40,10 @@ class Game:
         mini = 13
         beginner_ix = np.random.randint(self.player_count)
         beginner_card = self.deck.bottom_trump
-        for i, player in enumerate(self.players):
+        for i, playerr in enumerate(self.players):
             if mini == 2 or self.deck.bottom_trump == 2 and mini == 3:
                 break
-            for card in player.cards:
+            for card in playerr.cards:
                 if card.suit == self.deck.trump_suit and card.num_value < mini:
                     mini = card.num_value
                     beginner_ix = i
@@ -56,10 +58,9 @@ class Game:
         assert attacker_ix < self.player_count, ("One of the players does "
                 "not exist")
         attacker = self.players[attacker_ix]
-        defender = self.players[defender_ix]
-        assert (len(self.field.attack_cards) + len(self.field.defended_pairs)
-                + len(cards) <= min(len(defender.cards), self.hand_size)), \
-                "Number of attack cards exceeds allowed number"
+        defender = self.players[self.defender_ix]
+        assert not exceeds_field(cards, defender), ("Number of attack cards "
+                "exceeds allowed number")
         for card in cards:
             assert card in attacker.cards, ("Attacker does not have one of "
                     "the cards")
@@ -75,41 +76,43 @@ class Game:
         for card in cards:
             if card.suit == self.deck.trump_suit:
                 self.features[13 + card.num_value] = -1
-        if attacker_ix == next_neighbour() or attacker_ix == prev_neighbour():
+        if (attacker_ix == self.next_neighbour()
+                or attacker_ix == self.prev_neighbour()):
             for card in cards:
                 if card.suit != self.deck.trump_suit:
-                    sub_neighbour_card(card)
+                    self.sub_neighbour_card(card)
 
     def defend(self, to_defend, card):
         """Defends the card to defend with the given card."""
 
-        defender = self.players[defender_ix]
+        defender = self.players[self.defender_ix]
         assert card in defender.cards, "Defender does not have the card"
         assert self.field.on_field_attack(to_defend), ("Card to defend is not "
                 "on the field as an attack")
-        assert (card.value > to_defend.value and card.suit == to_defend.suit
+        is_greater = card.value > to_defend.value
+        assert (is_greater and card.suit == to_defend.suit
                 or card.suit == self.deck.trump_suit), "Card is too low"
         if to_defend.suit == self.deck.trump_suit:
-            assert card.value > to_defend.value, "Card is too low"
+            assert is_greater, "Card is too low"
         defender.defend(to_defend, card)
         self.field.defend(to_defend, card)
         # update features
         if card.suit == self.deck.trump_suit:
             self.features[13 + card.num_value] = -1
-        if defender_ix == next_neighbour() or defender_ix == prev_neighbour():
+        if (self.defender_ix == self.next_neighbour()
+                or self.defender_ix == self.prev_neighbour()):
             if card.suit != self.deck.trump_suit:
-                sub_neighbour_card(card)
+                self.sub_neighbour_card(card)
 
     def push(self, cards):
         """Pushes the cards to the next player."""
 
         assert self.field.defended_pairs == [], ("Can't push after "
                 "having defended")
-        defender = self.players[defender_ix]
-        assert (len(self.field.attack_cards) + len(cards)
-                <= min(len(self.player[self.next_neighbour()].cards),
-                self.hand_size)), ("Number of attack cards exceeds "
-                "allowed number") 
+        defender = self.players[self.defender_ix]
+        assert not exceeds_field(cards,
+                self.players[self.next_neighbour(self.defender_ix)]), \
+                "Number of attack cards exceeds allowed number" 
         defender.push(cards)
         self.field.push(cards)
         # update features
@@ -117,10 +120,11 @@ class Game:
             if card.suit == self.deck.trump_suit:
                 self.features[13 + card.num_value] = -1
                 break
-        if defender_ix == next_neighbour() or defender_ix == prev_neighbour():
+        if (self.defender_ix == self.next_neighbour()
+                or self.defender_ix == self.prev_neighbour()):
             for card in cards:
                 if card.suit != self.deck.trump_suit:
-                    sub_neighbour_card(card)
+                    self.sub_neighbour_card(card)
         self.update_defender()
 
     def take(self):
@@ -128,13 +132,14 @@ class Game:
 
         assert not self.field.is_empty(), "Field can't be empty"
         cards = self.field.take()
-        self.players[defender_ix].take(cards)
+        self.players[self.defender_ix].take(cards)
         # update features
         for card in cards:
             if card.suit == self.deck.trump_suit:
                 self.features[13 + card.num_value] = \
-                        index_from_kraudia(defender_ix)
-        if defender_ix == prev_neighbour() or defender_ix == next_neighbour():
+                        self.index_from_kraudia(self.defender_ix)
+        if (self.defender_ix == self.prev_neighbour()
+                or self.defender_ix == self.next_neighbour()):
             for card in cards:
                 if card.suit != self.deck.trump_suit:
                     self.features[card.num_value] += 1
@@ -158,11 +163,11 @@ class Game:
         or the deck is empty."""
 
         assert player_ix < self.player_count, "Player does not exist"
-        drawer = self.players[player_ix]
-        amount = self.hand_size - len(drawer.cards)
+        playerr = self.players[player_ix]
+        amount = self.hand_size - len(playerr.cards)
         assert amount >= 0, "Amount is less than one"
         cards = self.deck.take(amount)
-        drawer.take(cards)
+        playerr.take(cards)
         # update features
         if player_ix == kraudia_ix:
             for card in cards:
@@ -172,12 +177,109 @@ class Game:
     def attack_ended(self):
         """Tests whether an attack is over because the maximum allowed
         number of attack cards has been placed and defended or because
-        all attackers have checked."""
+        all attackers and the defender have checked."""
 
-        return (self.players[defender_ix].cards == []
+        defender = self.players[self.defender_ix]
+        return (defender.cards == []
             or len(self.field.defended_pairs) == self.hand_size
-            or self.players[prev_neighbour(defender_ix)].checks
-            and self.players[next_neighbour(defender_ix)].checks)
+            or self.players[self.prev_neighbour(self.defender_ix)].checks
+            and self.players[self.next_neighbour(self.defender_ix)].checks
+            and defender.checks)
+
+    def exceeds_field(self, cards, playerr):
+        """Returns whether the number of cards on the field would
+        exceed the maximum allowed number of attack cards when the
+        player with the given index defends."""
+
+        return (len(self.field.attack_cards) + len(self.field.defended_pairs)
+                + len(cards) > min(len(playerr.cards), self.hand_size))
+
+    def get_actions(self, player_ix=None):
+        """Returns a list of possible actions for the current game
+        state for the given player index.
+        If no index is given, kraudia_ix is used.
+
+        An action is a vector consisting of:
+        - action types attack (0), defend (1), push (2) and check (3)
+        - numerical value of the card to play (-1 if checking)
+        - numerical suit of the card to play (-1 if checking)
+        - if defending, numerical value of the card to defend (else -1)
+        - if defending, numerical suit of the card to defend
+          (else -1)"""
+
+        if player_ix == None:
+            player_ix = self.kraudia_ix
+        assert player_ix < self.player_count, "Player does not exist"
+        actions = []
+        playerr = self.players[player_ix]
+        attack_cards = self.field.attack_cards
+        pushed = 0
+        if player_ix == self.defender_ix:
+            # actions as defender
+            for to_defend in attack_cards:
+                for card in playerr.cards:
+                    is_greater = card.value > to_defend.value
+                    if (is_greater and card.suit == to_defend.suit
+                            or card.suit == self.deck.trump_suit):
+                        if to_defend.suit == self.deck.trump_suit:
+                            if is_greater:
+                                actions.append(
+                                        self.defend_action(card, to_defend))
+                        else:
+                            actions.append(self.defend_action(card, to_defend))
+                    if (pushed < 2 and card.value == to_defend.value
+                            and self.field.defended_pairs == []
+                            and not exceeds_field([None],
+                            self.players[self.next_neighbour(player_ix)])): 
+                        actions.append(self.push_action(card))
+                        if pushed == 0:
+                            pushed = 1
+                if pushed == 1:
+                    pushed = 2
+        else:
+            is_first_attacker = player_ix == self.prev_neighbour(
+                    self.defender_ix)
+            if (is_first_attacker
+                    or player_ix == self.next_neighbour(self.defender_ix)):
+                # actions as first attacker
+                if attack_cards == [] and is_first_attacker:
+                    for card in playerr.cards:
+                        actions.append(self.attack_action(card))
+                    return actions
+                # actions as attacker
+                for field_card in (attack_cards
+                        + chain.from_iterable(
+                        self.field.defended_pairs)):
+                    for card in playerr.cards:
+                        if card.value == field_card.value:
+                            actions.append(self.attack_action(card))
+            else:
+                return []
+        actions.append(self.check_action())
+        return actions
+
+    def attack_action(self, card):
+        """Returns an action vector for attacking with the
+        given card."""
+
+        return np.array([0, card.num_value, card.num_suit, -1, -1])
+
+    def defend_action(self, card, to_defend):
+        """Returns an action vector for defending the card to
+        defend with the given card."""
+
+        return np.array([1, card.num_value, card.num_suit,
+                to_defend.num_value, to_defend.num_suit])
+
+    def push_action(self, card):
+        """Returns an action vector for pushing with the given card."""
+
+        return np.array([2, card.num_value, card.num_suit, -1, -1])
+
+    def check_action(self):
+        """Returns an action vector for checking."""
+
+        return np.array([3, -1, -1, -1, -1])
 
     def prev_neighbour(self, player_ix=None):
         """Returns the index of the player before the player of the
@@ -225,7 +327,7 @@ class Game:
         """Checks if no player aside from one has cards left."""
 
         count = 0;
-        for player in self.players:
-            if player.cards != []:
+        for playerr in self.players:
+            if playerr.cards != []:
                 count += 1
         return count <= 1

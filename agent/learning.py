@@ -10,7 +10,7 @@ pad_sequences(sequence, max_len)
 model.add(Masking(input_shape=(1, max_len)))
 model.add(Dense(32, activation="relu")) 
 model.add(Dense(16, activation="relu"))
-model.add(Dense(3))
+model.add(Dense(5))
 
 model.compile(optimizer=SGD(lr=0.1, decay=0.0), loss="mse")
 
