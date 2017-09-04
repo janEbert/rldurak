@@ -1,25 +1,18 @@
 import deck, player as player_m, field, game as game_m
 import threading, queue
+from random import choice
 import numpy as np
 
-if __name__ == '__main__':
-    # name 'Kraudia' is required to find the agent
-    names = ['Kraudia', 'Bob']
-    deck_size = 52
-    hand_size = 6
-    durak_ix = -1
-    game = None
-    epsilon = None
-    threads = []
-    action_queue = queue.Queue(15)
+# name 'Kraudia' is required to find the agent
+names = ['Kraudia', 'Bob', 'Alice']
+deck_size = 52
+hand_size = 6
 
-    iterations = 1000
-    # how often random bots wait
-    # calculated from a normal distribution with the given values
-    epsilon_mu = 0.7
-    epsilon_sigma = 0.15
-
-    main()
+iterations = 1000
+# how often random bots wait
+# calculated from a normal distribution with the given values
+epsilon_mu = 0.7
+epsilon_sigma = 0.15
 
 
 def main():
@@ -58,42 +51,72 @@ def main():
         while not game.ended():
             active_player_indices = game.active_player_indices()
             for ix in active_player_indices:
+                print(ix)
+                deck.print_cards(game.players[ix].cards, True)
                 thread = threading.Thread(target=receive_action, args=(ix,))
                 thread.start()
                 threads.append(thread)
+            first_attacker_ix = active_player_indices[0]
             while not game.attack_ended():
                 # TODO reward if player_ix == game.kraudia_ix
                 player_ix, action = action_queue.get()
                 if action[0] == 0:
+                    print('try', player_ix, action)
                     game.attack(player_ix, [make_card(action)])
                 elif action[0] == 1:
                     to_defend, card = make_card(action)
                     game.defend(to_defend, card)
                 elif action[0] == 2:
+                    for ix in active_player_indices:
+                        game.check(ix)
+                    while not action_queue.empty():
+                        action_queue.get()
+                        action_queue.task_done()
+                    for ix in active_player_indices:
+                        threads[ix].join()
+                        game.uncheck(ix)
+                    threads.clear()
+                    active_player_indices = game.active_player_indices()
+                    for ix in active_player_indices:
+                        thread = threading.Thread(target=receive_action, args=(ix,))
+                        thread.start()
+                        threads.append(thread)
                     game.push([make_card(action)])
-                else:
+                elif action[0] == 3:
                     game.check(player_ix)
                 action_queue.task_done()
+            print('attack ended')
+            # attack ended
             for ix in active_player_indices:
                 game.check(ix)
-            if game.field.attack_cards != []:
-                game.take()
-            for thread in threads:
-                threads[ix].join()
-            for ix in active_player_indices:
-                game.draw(ix, )
-                game.uncheck(ix)
             while not action_queue.empty():
                 action_queue.get()
                 action_queue.task_done()
+            for ix in active_player_indices:
+                threads[ix].join()
+                game.uncheck(ix)
             threads.clear()
+            while first_attacker_ix != game.defender_ix:
+                # first attacker till last attacker
+                game.draw(first_attacker_ix)
+                first_attacker_ix += 1
+                if first_attacker_ix == game.player_count:
+                    first_attacker_ix = 0
+            game.draw(first_attacker_ix + 1)
+            if game.field.attack_cards != []:
+                game.take()
+            else:
+                game.draw(first_attacker_ix)
+                game.update_defender()
         for ix, player in enumerate(game.players):
             if player.cards != []:
                 durak_ix = ix
         if durak_ix == game.kraudia_ix:
             # TODO negative reward
+            print('Kraudia lost...')
         else:
             # TODO positive reward
+            print('Kraudia did not lose!')
 
 
 def receive_action(player_ix):
@@ -101,9 +124,10 @@ def receive_action(player_ix):
 
     global game
     player = game.players[player_ix]
-    possible_actions = game.get_actions(player_ix)
-    if player_ix == game.kraudia_ix:
+    possible_actions = [0]
+    if False and player_ix == game.kraudia_ix:
         while not player.checks and possible_actions != []:
+            possible_actions = game.get_actions(player_ix)
             if (not game.defender_ix == player_ix
                     and (game.field.attack_cards == []
                     or game.field.defended_pairs == [])
@@ -115,15 +139,20 @@ def receive_action(player_ix):
                 add_action(player_ix, game.wait_action())
     else:
         while not player.checks and possible_actions != []:
-            if (not game.defender_ix == player_ix
-                    and (game.field.attack_cards == []
-                    or game.field.defended_pairs == [])
-                    or game.defender_ix == player_ix):
+            possible_actions = game.get_actions(player_ix)
+            if not game.defender_ix == player_ix and game.field.is_empty():
+                action = choice(possible_actions)
+                while action[0] == 3 or action[0] == 4:
+                    action = choice(possible_actions)
+                add_action(player_ix, action)
+            elif (not game.defender_ix == player_ix
+                    and game.field.attack_cards == []):
+                action = choice(possible_actions)
+                add_action(player_ix, action)
+            elif game.defender_ix == player_ix:
                 if np.random.random() > epsilon:
-                    action = np.random.choice(possible_actions)
+                    action = choice(possible_actions)
                     add_action(player_ix, action)
-                    if action[0] != 4:
-                        possible_actions.remove(action)
                 else:
                     add_action(player_ix, game.wait_action())
             else:
@@ -134,6 +163,7 @@ def add_action(player_ix, action):
     """Add an action with the belonging player to the action queue."""
 
     global action_queue
+    print(player_ix, action)
     action_queue.put((player_ix, action))
 
 
@@ -147,3 +177,13 @@ def make_card(action):
     elif action[0] == 1:
         return deck.Card(num_value=action[3], num_suit=action[4]), \
                 deck.Card(num_value=action[1], num_suit=action[2])
+
+
+if __name__ == '__main__':
+    durak_ix = -1
+    game = None
+    epsilon = None
+    threads = []
+    action_queue = queue.Queue(50)
+
+    main()

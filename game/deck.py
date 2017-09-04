@@ -16,12 +16,21 @@ def same_value(cards):
     return True
 
 
-def print_cards(cards):
-    """Prints a list of cards on the console."""
+def print_cards(cards, numerical=False):
+    """Prints a list of cards on the console.
 
-    string = str(cards[0].value) + str(cards[0].suit)
-    for card in cards[1:]:
-        string += ', ' + str(card.value) + str(card.suit)
+    Also allows numerical representation."""
+
+    if numerical:
+        string = '[' + str(cards[0].num_value) + str(cards[0].num_suit)
+        for card in cards[1:]:
+            string += ', ' + str(card.num_value) + str(card.num_suit)
+        print(string + ']')
+    else:
+        string = '[' + str(cards[0].value) + str(cards[0].suit)
+        for card in cards[1:]:
+            string += ', ' + str(card.value) + str(card.suit)
+        print(string + ']')
 
 
 class Card:
@@ -45,6 +54,9 @@ class Card:
         # index in full feature vector
         self.index = self.num_value + self.num_suit * 13
 
+    def __eq__(self, other):
+        return self.value == other.value and self.suit == other.suit
+
 
 class Deck:
     """A deck of standard playing cards with a trump card at
@@ -54,7 +66,7 @@ class Deck:
         """Initializes the deck with the lowest cards removed if size
         is less than 52."""
 
-        assert size >= 20 and size <= 104 and size % 4 == 0, 
+        assert size >= 20 and size <= 104 and size % 4 == 0, \
                 'Size does not make sense'
         self.size = size
         self.cards = []

@@ -41,12 +41,12 @@ class Field:
 
         found = [False] * len(cards)
         for i, card in enumerate(cards):
-            for att_card in attack_cards:
+            for att_card in self.attack_cards:
                 if card.value == att_card.value:
                     found[i] = True
                     break
             if not found[i]:
-                for (att_card, def_card) in defended_pairs:
+                for (att_card, def_card) in self.defended_pairs:
                     if (card.value == att_card.value
                             or card.value == def_card.value):
                         found[i] = True
@@ -56,10 +56,10 @@ class Field:
     def on_field(self, card):
         """Tests whether the given card is on the field."""
 
-        for att_card in attack_cards:
+        for att_card in self.attack_cards:
             if att_card == card:
                 return True
-        for (att_card, def_card) in defended_pairs:
+        for (att_card, def_card) in self.defended_pairs:
             if att_card == card or def_card == card:
                 return True
         return False
@@ -67,7 +67,7 @@ class Field:
     def on_field_attack(self, card):
         """Tests whether the given card is on the field as an attack."""
 
-        for att_card in attack_cards:
+        for att_card in self.attack_cards:
             if att_card == card:
                 return True
         return False

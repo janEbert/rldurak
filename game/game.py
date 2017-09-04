@@ -47,6 +47,8 @@ class Game:
                             self.features[13 + card.num_value] = 0
             self.players.append(new_player)
         self.player_count = len(self.players)
+        # TODO make two players possible
+        assert self.player_count > 2, 'Two players not currently supported'
         assert self.player_count > 1 and self.player_count < 8, \
                 'Player count does not make sense'
         self.field = field.Field()
@@ -64,14 +66,16 @@ class Game:
         beginner_ix = np.random.randint(self.player_count)
         beginner_card = self.deck.bottom_trump
         for i, player in enumerate(self.players):
-            if mini == 2 or self.deck.bottom_trump == 2 and mini == 3:
+            if (mini == 2 or self.deck.bottom_trump.num_value == 2
+                    and mini == 3):
                 break
             for card in player.cards:
                 if card.suit == self.deck.trump_suit and card.num_value < mini:
                     mini = card.num_value
                     beginner_ix = i
                     beginner_card = card
-                    if mini == 2 or self.deck.bottom_trump == 2 and mini == 3:
+                    if (mini == 2 or self.deck.bottom_trump.num_value == 2
+                            and mini == 3):
                         break
         self.defender_ix = (beginner_ix + 1) % self.player_count
         return beginner_ix, beginner_card
@@ -83,8 +87,8 @@ class Game:
                 'not exist')
         attacker = self.players[attacker_ix]
         defender = self.players[self.defender_ix]
-        assert not exceeds_field(cards, defender), ('Number of attack cards '
-                'exceeds allowed number')
+        assert not self.exceeds_field(cards, defender), ('Number of attack '
+                'cards exceeds allowed number')
         for card in cards:
             assert card in attacker.cards, ('Attacker does not have one of '
                     'the cards')
@@ -237,7 +241,7 @@ class Game:
             self.features[53] = self.deck.size
         else:
             self.features[27] = self.deck.size
-        if player_ix == kraudia_ix:
+        if player_ix == self.kraudia_ix:
             if self.full_features:
                 for card in cards:
                     self.features[card.index] = 0
@@ -321,8 +325,8 @@ class Game:
                     return actions
                 # actions as attacker
                 for field_card in (attack_cards
-                        + chain.from_iterable(
-                        self.field.defended_pairs)):
+                        + list(chain.from_iterable(
+                        self.field.defended_pairs))):
                     for card in player.cards:
                         if card.value == field_card.value:
                             actions.append(self.attack_action(card))
@@ -335,29 +339,29 @@ class Game:
         """Returns an action vector for attacking with the
         given card."""
 
-        return np.array([0, card.num_value, card.num_suit, -1, -1])
+        return (0, card.num_value, card.num_suit, -1, -1)
 
     def defend_action(self, card, to_defend):
         """Returns an action vector for defending the card to
         defend with the given card."""
 
-        return np.array([1, card.num_value, card.num_suit,
-                to_defend.num_value, to_defend.num_suit])
+        return (1, card.num_value, card.num_suit, to_defend.num_value,
+                to_defend.num_suit)
 
     def push_action(self, card):
         """Returns an action vector for pushing with the given card."""
 
-        return np.array([2, card.num_value, card.num_suit, -1, -1])
+        return (2, card.num_value, card.num_suit, -1, -1)
 
     def check_action(self):
         """Returns an action vector for checking."""
 
-        return np.array([3, -1, -1, -1, -1])
+        return (3, -1, -1, -1, -1)
 
     def wait_action(self):
         """Returns an action vector for waiting."""
 
-        return np.array([4, -1, -1, -1, -1])
+        return (4, -1, -1, -1, -1)
 
     def active_player_indices(self):
         """Returns the indices of both attackers and the defender."""
@@ -398,12 +402,12 @@ class Game:
         returns 3 (with appropriate wrapping)."""
 
         assert player_ix < self.player_count, 'Player does not exist'
-        return (player_ix - kraudia_ix) % self.player_count 
+        return (player_ix - self.kraudia_ix) % self.player_count 
 
     def update_defender(self, count=1):
         """Increases defender index by count (with wrapping)."""
 
-        for i in range(count)
+        for i in range(count):
             self.defender_ix += 1
             if self.defender_ix == self.player_count:
                 self.defender_ix = 0
