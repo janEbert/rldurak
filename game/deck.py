@@ -21,7 +21,7 @@ def print_cards(cards):
 
     string = str(cards[0].value) + str(cards[0].suit)
     for card in cards[1:]:
-        string += ", " + str(card.value) + str(card.suit)
+        string += ', ' + str(card.value) + str(card.suit)
 
 
 class Card:
@@ -30,14 +30,14 @@ class Card:
     def __init__(self, value=None, suit=None, num_value=None, num_suit=None):
         if num_value == None and num_suit == None:
             assert value in values and suit in suits, \
-                    "Value or suit is not valid"
+                    'Value or suit is not valid'
             self.value = value;
             self.suit = suit;
             self.num_value = value_dict[self.value]
             self.num_suit = suit_dict[self.suit]
         else:
             assert (num_value >= 0 and num_value < 13 and num_suit >= 0
-                    and num_suit < 4), "Value or suit is not valid"
+                    and num_suit < 4), 'Value or suit is not valid'
             self.value = values[num_value]
             self.suit = suits[num_suit]
             self.num_value = num_value
@@ -55,7 +55,7 @@ class Deck:
         is less than 52."""
 
         assert size >= 20 and size <= 104 and size % 4 == 0, 
-                "Size does not make sense"
+                'Size does not make sense'
         self.size = size
         self.cards = []
         self.fill()
@@ -80,6 +80,7 @@ class Deck:
         rshuffle(self.cards);
         self.bottom_trump = self.cards[len(self.cards) - 1]
         self.trump_suit = self.bottom_trump.suit;
+        self.num_trump_suit = suit_dict[self.trump_suit];
 
     def take(self, amount):
         """Returns and removes the given amount of cards from the deck."""

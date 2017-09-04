@@ -17,7 +17,7 @@ class Field:
     def defend(self, to_defend, card):
         """Defends the card to defend with the given card."""
 
-        assert to_defend in self.attack_cards, "Card is not on the field"
+        assert to_defend in self.attack_cards, 'Card is not on the field'
         self.attack_cards.remove(to_defend)
         self.defended_pairs.append((to_defend, card))
 

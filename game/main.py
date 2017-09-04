@@ -3,8 +3,8 @@ import threading, queue
 import numpy as np
 
 if __name__ == '__main__':
-    # name "Kraudia" is required to find the agent
-    names = ["Kraudia", "Bob"]
+    # name 'Kraudia' is required to find the agent
+    names = ['Kraudia', 'Bob']
     deck_size = 52
     hand_size = 6
     durak_ix = -1
@@ -30,17 +30,35 @@ def main():
     for n in range(iterations):
         epsilon = min(0.9, np.random.normal(epsilon_mu, epsilon_sigma))
         game = game_m.Game(names, deck_size, hand_size)
+        if hand_size == 6:
+            # reshuffle if a player has more than five cards of the
+            # same suit (except trump) in their hand
+            for player in game.players:
+                counts = [0] * 4
+                for card in player.cards:
+                    counts[card.num_suit] += 1
+                if max(counts) >= 5 and counts[game.deck.num_trump_suit] < 5:
+                    game = game_m.Game(names, deck_size, hand_size)
+                    break
+            while max(counts) >= 5 and counts[game.deck.num_trump_suit] < 5:
+                for player in game.players:
+                    counts = [0] * 4
+                    for card in player.cards:
+                        counts[card.num_suit] += 1
+                    if (max(counts) >= 5
+                            and counts[game.deck.num_trump_suit] < 5):
+                        game = game_m.Game(names, deck_size, hand_size)
+                        break
         if durak_ix < 0:
             beginner_ix, beginner_card = game.find_beginner()
             if beginner_card == game.deck.bottom_trump:
-                print("Beginner was chosen randomly")
+                print('Beginner was chosen randomly')
         else:
             game.defender_ix = durak_ix
         while not game.ended():
             active_player_indices = game.active_player_indices()
             for ix in active_player_indices:
-                thread = threading.Thread(target=receive_action,
-                        args=(ix,))
+                thread = threading.Thread(target=receive_action, args=(ix,))
                 thread.start()
                 threads.append(thread)
             while not game.attack_ended():
