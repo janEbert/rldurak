@@ -1,4 +1,4 @@
-from random import shuffle
+from random import shuffle as rshuffle
 
 values = [str(x) for x in range(2, 10)] + ['T', 'J', 'Q', 'K', 'A']
 value_dict = dict(zip(values, range(13)))
@@ -33,6 +33,8 @@ class Card:
         self.suit = suit;
         self.num_value = value_dict[self.value]
         self.num_suit = suit_dict[self.suit]
+        # index in full feature vector
+        self.index = self.num_value + self.num_suit * 13
 
 
 class Deck:
@@ -66,7 +68,7 @@ class Deck:
     def shuffle(self):
         """Shuffles the deck's cards and updates the revealed trump."""
 
-        shuffle(self.cards);
+        rshuffle(self.cards);
         self.bottom_trump = self.cards[len(self.cards) - 1]
         self.trump_suit = self.bottom_trump.suit;
 
