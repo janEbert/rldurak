@@ -27,12 +27,21 @@ def print_cards(cards):
 class Card:
     """A standard playing card with value and suit."""
 
-    def __init__(self, value, suit):
-        assert value in values and suit in suits, "Value or suit is not valid"
-        self.value = value;
-        self.suit = suit;
-        self.num_value = value_dict[self.value]
-        self.num_suit = suit_dict[self.suit]
+    def __init__(self, value=None, suit=None, num_value=None, num_suit=None):
+        if num_value == None and num_suit == None:
+            assert value in values and suit in suits, \
+                    "Value or suit is not valid"
+            self.value = value;
+            self.suit = suit;
+            self.num_value = value_dict[self.value]
+            self.num_suit = suit_dict[self.suit]
+        else:
+            assert (num_value >= 0 and num_value < 13 and num_suit >= 0
+                    and num_suit < 4), "Value or suit is not valid"
+            self.value = values[num_value]
+            self.suit = suits[num_suit]
+            self.num_value = num_value
+            self.num_suit = num_suit
         # index in full feature vector
         self.index = self.num_value + self.num_suit * 13
 
