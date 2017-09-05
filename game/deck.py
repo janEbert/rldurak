@@ -9,11 +9,13 @@ suit_dict = dict(zip(suits, range(4)))
 def same_value(cards):
     """Tests whether all given cards have the same value."""
 
-    comp = cards[0].value
-    for card in cards[1:]:
-        if card.value != comp:
-            return False
-    return True
+    if len(cards) > 0:
+        comp = cards[0].value
+        for card in cards[1:]:
+            if card.value != comp:
+                return False
+        return True
+    return False
 
 
 def print_cards(cards, numerical=False):
@@ -36,8 +38,8 @@ def print_cards(cards, numerical=False):
 class Card:
     """A standard playing card with value and suit."""
 
-    def __init__(self, value=None, suit=None, num_value=None, num_suit=None):
-        if num_value == None and num_suit == None:
+    def __init__(self, value, suit, numerical=False):
+        if not numerical:
             assert value in values and suit in suits, \
                     'Value or suit is not valid'
             self.value = value;
@@ -45,12 +47,12 @@ class Card:
             self.num_value = value_dict[self.value]
             self.num_suit = suit_dict[self.suit]
         else:
-            assert (num_value >= 0 and num_value < 13 and num_suit >= 0
-                    and num_suit < 4), 'Value or suit is not valid'
-            self.value = values[num_value]
-            self.suit = suits[num_suit]
-            self.num_value = num_value
-            self.num_suit = num_suit
+            assert (value >= 0 and value < 13 and suit >= 0
+                    and suit < 4), 'Value or suit is not valid'
+            self.value = values[value]
+            self.suit = suits[suit]
+            self.num_value = value
+            self.num_suit = suit
         # index in full feature vector
         self.index = self.num_value + self.num_suit * 13
 
@@ -95,7 +97,8 @@ class Deck:
         self.num_trump_suit = suit_dict[self.trump_suit];
 
     def take(self, amount):
-        """Returns and removes the given amount of cards from the deck."""
+        """Returns and removes the given amount of cards from
+        the deck."""
 
         self.size -= amount
         if self.size < 0:

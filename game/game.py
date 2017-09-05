@@ -83,8 +83,7 @@ class Game:
     def attack(self, attacker_ix, cards):
         """Attacks the defender with the attacker's given cards."""
 
-        assert attacker_ix < self.player_count, ('One of the players does '
-                'not exist')
+        assert attacker_ix < self.player_count, 'Attacker does not exist'
         attacker = self.players[attacker_ix]
         defender = self.players[self.defender_ix]
         assert not self.exceeds_field(cards, defender), ('Number of attack '
@@ -143,7 +142,7 @@ class Game:
     def push(self, cards):
         """Pushes the cards to the next player."""
 
-        assert self.field.defended_pairs == [], ('Cannot push after '
+        assert not self.field.defended_pairs, ('Cannot push after '
                 'having defended')
         defender = self.players[self.defender_ix]
         assert not exceeds_field(cards,
@@ -180,15 +179,15 @@ class Game:
             else:
                 self.features[26] = self.field.attack_cards[0].num_suit
             if len(self.field.attack_cards) > 1:
-                att_suits = [card.suit for card in self.field.attack_cards]
-                for (att_card, def_card) in defended_pairs:
-                    if (att_card.suit != self.deck.trump_suit
-                            and def_card.suit == self.deck.trump_suit
-                            and att_card.suit in att_suits):
+                attack_suits = [card.suit for card in self.field.attack_cards]
+                for (attack_card, defense_card) in defended_pairs:
+                    if (attack_card.suit != self.deck.trump_suit
+                            and defense_card.suit == self.deck.trump_suit
+                            and attack_card.suit in attack_suits):
                         if self.full_features:
-                            self.features[52] = att_card.suit
+                            self.features[52] = attack_card.suit
                         else:
-                            self.features[26] = att_card.suit
+                            self.features[26] = attack_card.suit
                         break
         cards = self.field.take()
         self.players[self.defender_ix].take(cards)
@@ -256,7 +255,7 @@ class Game:
         all attackers and the defender have checked."""
 
         defender = self.players[self.defender_ix]
-        return (defender.cards == []
+        return (not defender.cards
             or len(self.field.defended_pairs) == self.hand_size
             or self.players[self.prev_neighbour(self.defender_ix)].checks
             and self.players[self.next_neighbour(self.defender_ix)].checks
@@ -273,18 +272,19 @@ class Game:
     def get_actions(self, player_ix=None):
         """Returns a list of possible actions for the current game
         state for the given player index.
-        If no index is given, kraudia_ix is used.
+        If no index is given, kraudia_ix is used. The action for
+        waiting is left out.
 
-        An action is a vector consisting of:
-        - action types attack (0), defend (1), push (2), check (3) and
-          wait (4)
+        An action is a tuple consisting of:
+        - action types attack (0), defend (1), push (2), check (3)
+          and wait (4)
         - numerical value of the card to play (-1 if redundant)
         - numerical suit of the card to play (-1 if redundant)
         - if defending, numerical value of the card to defend (else -1)
         - if defending, numerical suit of the card to defend
           (else -1)"""
 
-        if player_ix == None:
+        if player_ix is None:
             player_ix = self.kraudia_ix
         assert player_ix < self.player_count, 'Player does not exist'
         actions = []
@@ -305,7 +305,7 @@ class Game:
                         else:
                             actions.append(self.defend_action(card, to_defend))
                     if (pushed < 2 and card.value == to_defend.value
-                            and self.field.defended_pairs == []
+                            and not self.field.defended_pairs
                             and not exceeds_field([None],
                             self.players[self.next_neighbour(player_ix)])): 
                         actions.append(self.push_action(card))
@@ -319,7 +319,7 @@ class Game:
             if (is_first_attacker
                     or player_ix == self.next_neighbour(self.defender_ix)):
                 # actions as first attacker
-                if attack_cards == [] and is_first_attacker:
+                if not attack_cards and is_first_attacker:
                     for card in player.cards:
                         actions.append(self.attack_action(card))
                     return actions
@@ -332,34 +332,34 @@ class Game:
                             actions.append(self.attack_action(card))
             else:
                 return []
-        actions += [self.check_action(), self.wait_action()]
+        actions += [self.check_action()]
         return actions
 
     def attack_action(self, card):
-        """Returns an action vector for attacking with the
+        """Returns an action tuple for attacking with the
         given card."""
 
         return (0, card.num_value, card.num_suit, -1, -1)
 
     def defend_action(self, card, to_defend):
-        """Returns an action vector for defending the card to
+        """Returns an action tuple for defending the card to
         defend with the given card."""
 
         return (1, card.num_value, card.num_suit, to_defend.num_value,
                 to_defend.num_suit)
 
     def push_action(self, card):
-        """Returns an action vector for pushing with the given card."""
+        """Returns an action tuple for pushing with the given card."""
 
         return (2, card.num_value, card.num_suit, -1, -1)
 
     def check_action(self):
-        """Returns an action vector for checking."""
+        """Returns an action tuple for checking."""
 
         return (3, -1, -1, -1, -1)
 
     def wait_action(self):
-        """Returns an action vector for waiting."""
+        """Returns an action tuple for waiting."""
 
         return (4, -1, -1, -1, -1)
 
@@ -374,7 +374,7 @@ class Game:
         given index.
         If no index is given, kraudia_ix is used."""
 
-        if player_ix == None:
+        if player_ix is None:
             if self.kraudia_ix == 0:
                 return self.indices_from_kraudia[self.player_count - 1]
             else:
@@ -387,7 +387,7 @@ class Game:
         given index.
         If no index is given, kraudia_ix is used."""
 
-        if player_ix == None:
+        if player_ix is None:
             if self.kraudia_ix == self.player_count - 1:
                 return self.indices_from_kraudia[0]
             else:
@@ -425,6 +425,6 @@ class Game:
 
         count = 0;
         for player in self.players:
-            if player.cards != []:
+            if player.cards:
                 count += 1
         return count <= 1

@@ -65,7 +65,8 @@ class Field:
         return False
 
     def on_field_attack(self, card):
-        """Tests whether the given card is on the field as an attack."""
+        """Tests whether the given card is on the field
+        as an attack."""
 
         for att_card in self.attack_cards:
             if att_card == card:
@@ -75,7 +76,7 @@ class Field:
     def is_empty(self):
         """Tests whether no cards are on the field."""
 
-        return self.attack_cards == [] and self.defended_pairs == []
+        return not (self.attack_cards or self.defended_pairs)
 
     def clear(self):
         """Clears the playing field of cards."""

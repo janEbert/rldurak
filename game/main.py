@@ -9,9 +9,9 @@ deck_size = 52
 hand_size = 6
 
 iterations = 1000
-# how often random bots wait
+# how often random bots check
 # calculated from a normal distribution with the given values
-epsilon_mu = 0.7
+epsilon_mu = 0.2
 epsilon_sigma = 0.15
 
 
@@ -20,8 +20,9 @@ def main():
     giving rewards."""
 
     global durak_ix, game, epsilon, threads, action_queue
+    event = threading.Event()
     for n in range(iterations):
-        epsilon = min(0.9, np.random.normal(epsilon_mu, epsilon_sigma))
+        epsilon = max(0.07, np.random.normal(epsilon_mu, epsilon_sigma))
         game = game_m.Game(names, deck_size, hand_size)
         if hand_size == 6:
             # reshuffle if a player has more than five cards of the
@@ -53,7 +54,7 @@ def main():
             for ix in active_player_indices:
                 print(ix)
                 deck.print_cards(game.players[ix].cards, True)
-                thread = threading.Thread(target=receive_action, args=(ix,))
+                thread = ActionReceiver(ix, event)
                 thread.start()
                 threads.append(thread)
             first_attacker_ix = active_player_indices[0]
@@ -85,8 +86,9 @@ def main():
                 elif action[0] == 3:
                     game.check(player_ix)
                 action_queue.task_done()
-            print('attack ended')
             # attack ended
+            print('attack ended')
+            event.set()
             for ix in active_player_indices:
                 game.check(ix)
             while not action_queue.empty():
@@ -103,13 +105,13 @@ def main():
                 if first_attacker_ix == game.player_count:
                     first_attacker_ix = 0
             game.draw(first_attacker_ix + 1)
-            if game.field.attack_cards != []:
+            if game.field.attack_cards:
                 game.take()
             else:
                 game.draw(first_attacker_ix)
                 game.update_defender()
         for ix, player in enumerate(game.players):
-            if player.cards != []:
+            if player.cards:
                 durak_ix = ix
         if durak_ix == game.kraudia_ix:
             # TODO negative reward
@@ -119,44 +121,60 @@ def main():
             print('Kraudia did not lose!')
 
 
-def receive_action(player_ix):
-    """Receives all actions for the player for one round."""
+class ActionReceiver(threading.Thread):
+    """Receives all actions for the given player for one round."""
 
-    global game
-    player = game.players[player_ix]
-    possible_actions = [0]
-    if False and player_ix == game.kraudia_ix:
-        while not player.checks and possible_actions != []:
-            possible_actions = game.get_actions(player_ix)
-            if (not game.defender_ix == player_ix
-                    and (game.field.attack_cards == []
-                    or game.field.defended_pairs == [])
-                    or game.defender_ix == player_ix):
-                # TODO receive action from neural net
-                if action[0] != 4:
-                    possible_actions.remove(action)
-            else:
-                add_action(player_ix, game.wait_action())
-    else:
-        while not player.checks and possible_actions != []:
-            possible_actions = game.get_actions(player_ix)
-            if not game.defender_ix == player_ix and game.field.is_empty():
-                action = choice(possible_actions)
-                while action[0] == 3 or action[0] == 4:
-                    action = choice(possible_actions)
-                add_action(player_ix, action)
-            elif (not game.defender_ix == player_ix
-                    and game.field.attack_cards == []):
-                action = choice(possible_actions)
-                add_action(player_ix, action)
-            elif game.defender_ix == player_ix:
-                if np.random.random() > epsilon:
-                    action = choice(possible_actions)
-                    add_action(player_ix, action)
+    def __init__(self, player_ix, event):
+        threading.Thread.__init__(self)
+        self.player_ix = player_ix
+        self.event = event
+
+    def run(self):
+        global game
+        player = game.players[self.player_ix]
+        if False and self.player_ix == game.kraudia_ix:
+            while not player.checks and possible_actions:
+                possible_actions = game.get_actions(self.player_ix)
+                if (not game.defender_ix == self.player_ix
+                        and not (game.field.attack_cards
+                        and game.field.defended_pairs)
+                        or game.defender_ix == self.player_ix):
+                    # TODO receive action from neural net
+                    if action[0] != 4:
+                        possible_actions.remove(action)
                 else:
-                    add_action(player_ix, game.wait_action())
+                    add_action(self.player_ix, game.wait_action())
+        else:
+            # first attacker
+            if (self.player_ix == game.prev_neighbour(game.defender_ix)
+                    and game.field.is_empty()):
+                possible_actions = game.get_actions(self.player_ix)
+                action = choice(possible_actions[:len(possible_actions) - 1])
+                add_action(self.player_ix, action)
+            self.event.wait()
+            possible_actions = game.get_actions(self.player_ix)
+            # attacker
+            if game.defender_ix != self.player_ix:
+                while not player.checks and len(possible_actions) > 1:
+                    # everything is defended
+                    if (not game.field.attack_cards
+                            and np.random.random() < epsilon):
+                        action = choice(possible_actions)
+                        add_action(self.player_ix, action)
+                add_action(self.player_ix, game.check_action())
+            # defender
             else:
-                add_action(player_ix, game.wait_action())
+                while not player.checks and len(possible_actions) > 1:
+                    # defender
+                    elif game.defender_ix == self.player_ix:
+                        if np.random.random() < epsilon:
+                            action = choice(possible_actions)
+                            add_action(self.player_ix, action)
+                        else:
+                            add_action(self.player_ix, game.wait_action())
+                    else:
+                        add_action(self.player_ix, game.wait_action())
+                add_action(self.player_ix, game.check_action())
 
 
 def add_action(player_ix, action):
@@ -169,14 +187,13 @@ def add_action(player_ix, action):
 
 def make_card(action):
     """Create a card from an action.
-
     Creates a tuple of two cards if action is defending."""
 
-    if action[0] == 0:
-        return deck.Card(num_value=action[1], num_suit=action[2])
-    elif action[0] == 1:
-        return deck.Card(num_value=action[3], num_suit=action[4]), \
-                deck.Card(num_value=action[1], num_suit=action[2])
+    if action[0] == 1:
+        return (deck.Card(action[3], action[4], numerical=True),
+                deck.Card(action[1], action[2], numerical=True))
+    else:
+        return deck.Card(action[1], action[2], numerical=True)
 
 
 if __name__ == '__main__':
