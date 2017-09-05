@@ -9,6 +9,10 @@ class Field:
         self.attack_cards = []
         self.defended_pairs = []
 
+    def __eq__(self, other):
+        return (self.attack_cards == other.attack_cards
+                and self.defended_pairs == other.defended_pairs)
+
     def attack(self, cards):
         """Puts the cards as attacks on the field."""
 

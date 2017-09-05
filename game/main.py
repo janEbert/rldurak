@@ -9,7 +9,7 @@ deck_size = 52
 hand_size = 6
 
 iterations = 1000
-# how often random bots check
+# how often random bots wait
 # calculated from a normal distribution with the given values
 epsilon_mu = 0.2
 epsilon_sigma = 0.15
@@ -22,7 +22,7 @@ def main():
     global durak_ix, game, epsilon, threads, action_queue
     event = threading.Event()
     for n in range(iterations):
-        epsilon = max(0.07, np.random.normal(epsilon_mu, epsilon_sigma))
+        epsilon = max(0.05, np.random.normal(epsilon_mu, epsilon_sigma))
         game = game_m.Game(names, deck_size, hand_size)
         if hand_size == 6:
             # reshuffle if a player has more than five cards of the
@@ -50,6 +50,7 @@ def main():
         else:
             game.defender_ix = durak_ix
         while not game.ended():
+            event.clear()
             active_player_indices = game.active_player_indices()
             for ix in active_player_indices:
                 print(ix)
@@ -63,7 +64,11 @@ def main():
                 player_ix, action = action_queue.get()
                 if action[0] == 0:
                     print('try', player_ix, action)
-                    game.attack(player_ix, [make_card(action)])
+                    if game.field.is_empty():
+                        game.attack(player_ix, [make_card(action)])
+                        event.set()
+                    else:
+                        game.attack(player_ix, [make_card(action)])
                 elif action[0] == 1:
                     to_defend, card = make_card(action)
                     game.defend(to_defend, card)
@@ -79,7 +84,7 @@ def main():
                     threads.clear()
                     active_player_indices = game.active_player_indices()
                     for ix in active_player_indices:
-                        thread = threading.Thread(target=receive_action, args=(ix,))
+                        thread = ActionReceiver(ix, event)
                         thread.start()
                         threads.append(thread)
                     game.push([make_card(action)])
@@ -159,21 +164,16 @@ class ActionReceiver(threading.Thread):
                     # everything is defended
                     if (not game.field.attack_cards
                             and np.random.random() < epsilon):
-                        action = choice(possible_actions)
-                        add_action(self.player_ix, action)
-                add_action(self.player_ix, game.check_action())
+                        possible_actions = game.get_actions(self.player_ix)
+                        add_action(self.player_ix, choice(possible_actions))
             # defender
             else:
                 while not player.checks and len(possible_actions) > 1:
                     # defender
-                    elif game.defender_ix == self.player_ix:
-                        if np.random.random() < epsilon:
-                            action = choice(possible_actions)
-                            add_action(self.player_ix, action)
-                        else:
-                            add_action(self.player_ix, game.wait_action())
-                    else:
-                        add_action(self.player_ix, game.wait_action())
+                    if np.random.random() < epsilon:
+                        possible_actions = game.get_actions(self.player_ix)
+                        add_action(self.player_ix, choice(possible_actions))
+            if not player.checks:
                 add_action(self.player_ix, game.check_action())
 
 
@@ -192,8 +192,7 @@ def make_card(action):
     if action[0] == 1:
         return (deck.Card(action[3], action[4], numerical=True),
                 deck.Card(action[1], action[2], numerical=True))
-    else:
-        return deck.Card(action[1], action[2], numerical=True)
+    return deck.Card(action[1], action[2], numerical=True)
 
 
 if __name__ == '__main__':
@@ -201,6 +200,6 @@ if __name__ == '__main__':
     game = None
     epsilon = None
     threads = []
-    action_queue = queue.Queue(50)
+    action_queue = queue.Queue(len(names) * 6)
 
     main()
