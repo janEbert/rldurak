@@ -145,7 +145,7 @@ class Game:
         assert not self.field.defended_pairs, ('Cannot push after '
                 'having defended')
         defender = self.players[self.defender_ix]
-        assert not exceeds_field(cards,
+        assert not self.exceeds_field(cards,
                 self.players[self.next_neighbour(self.defender_ix)]), \
                 'Number of attack cards exceeds allowed number' 
         defender.push(cards)
@@ -306,7 +306,7 @@ class Game:
                             actions.append(self.defend_action(card, to_defend))
                     if (pushed < 2 and card.value == to_defend.value
                             and not self.field.defended_pairs
-                            and not exceeds_field([None],
+                            and not self.exceeds_field([None],
                             self.players[self.next_neighbour(player_ix)])): 
                         actions.append(self.push_action(card))
                         if pushed == 0:

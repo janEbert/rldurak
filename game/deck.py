@@ -18,21 +18,20 @@ def same_value(cards):
     return False
 
 
-def print_cards(cards, numerical=False):
-    """Prints a list of cards on the console.
+def cards_to_string(cards, numerical=False):
+    """Returns a list of cards as a string.
 
     Also allows numerical representation."""
 
     if numerical:
-        string = '[' + str(cards[0].num_value) + str(cards[0].num_suit)
+        string = '[' + str(cards[0])
         for card in cards[1:]:
-            string += ', ' + str(card.num_value) + str(card.num_suit)
-        print(string + ']')
+            string += ', ' + str(card)
     else:
-        string = '[' + str(cards[0].value) + str(cards[0].suit)
+        string = '[' + repr(cards[0])
         for card in cards[1:]:
-            string += ', ' + str(card.value) + str(card.suit)
-        print(string + ']')
+            string += ', ' + repr(card)
+    return string + ']'
 
 
 class Card:
@@ -58,6 +57,12 @@ class Card:
 
     def __eq__(self, other):
         return self.value == other.value and self.suit == other.suit
+
+    def __str__(self):
+        return str(self.value) + str(self.suit)
+
+    def __repr__(self):
+        return str(self.num_value) + str(self.num_suit)
 
 
 class Deck:

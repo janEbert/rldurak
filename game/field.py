@@ -13,6 +13,10 @@ class Field:
         return (self.attack_cards == other.attack_cards
                 and self.defended_pairs == other.defended_pairs)
 
+    def __str__(self):
+        return ('Attacks: ' + str(self.attack_cards)
+                + '\nDefended:' + str(self.defended_pairs))
+
     def attack(self, cards):
         """Puts the cards as attacks on the field."""
 
