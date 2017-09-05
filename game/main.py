@@ -90,8 +90,8 @@ def main():
                         threads.append(thread)
                 elif action[0] == 3:
                     game.check(player_ix)
-                action_queue.task_done()
                 event.set()
+                action_queue.task_done()
             # attack ended
             print('attack ended\n\n')
             for ix in active_player_indices:
