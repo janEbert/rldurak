@@ -1,4 +1,4 @@
-from random import shuffle as rshuffle
+from random import shuffle as rshuffle, randint
 
 values = [str(x) for x in range(2, 10)] + ['T', 'J', 'Q', 'K', 'A']
 value_dict = dict(zip(values, range(13)))
@@ -79,16 +79,26 @@ class Deck:
     the bottom.
     """
 
-    def __init__(self, size=52):
+    def __init__(self, size=52, trump_suit=None):
         """Initialize the deck with the lowest cards removed if size
         is less than 52.
         """
         assert size >= 20 and size <= 104 and size % 4 == 0, \
                 'Size does not make sense'
         self.size = size
-        self.cards = []
         self.fill()
-        self.shuffle()
+        if trump_suit is not None:
+            assert trump_suit in suits or trump_suit in range(4), \
+                    'Trump suit is invalid'
+            if trump_suit in suits:
+                trump_suit = suit_dict[trump_suit]
+            trump_num_value = randint(0, 12)
+            bottom_trump = self.cards.pop(trump_num_value * 4 + trump_suit)
+            self.shuffle()
+            self.cards.append(bottom_trump)
+        else:
+            self.shuffle()
+        self.reveal_trump()
 
     def fill(self):
         """Fill the deck up to the desired size (unshuffled!).
@@ -104,8 +114,11 @@ class Deck:
             self.cards = self.cards + self.cards[:]
 
     def shuffle(self):
-        """Shuffle the deck's cards and update the revealed trump."""
+        """Shuffle the deck's cards."""
         rshuffle(self.cards)
+
+    def reveal_trump(self):
+        """Reveal the trump card at the bottom of the deck."""
         self.bottom_trump = self.cards[-1]
         self.trump_suit = self.bottom_trump.suit;
         self.num_trump_suit = suit_dict[self.trump_suit];

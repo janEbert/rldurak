@@ -1,0 +1,55 @@
+\documentclass{article}
+
+\usepackage[UKenglish]{babel}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[justification=centering]{caption}
+\usepackage[hidelinks]{hyperref}
+\usepackage{booktabs}
+
+\DeclareMathOperator{\argmax}{arg\,max}
+\DeclareMathOperator{\argmin}{arg\,min}
+
+\title{Reinforcement Learning for Durak}
+\subtitle{Bachelor's Thesis on Reinforcement Learning}
+\author{Jan Ebert}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\section{Introduction}
+
+Reinforcement learning -- and machine learning in general -- is one of the most progressive scientific fields in present time. Learning like a human by trial and error is fascinatingly useful and can have big influences on a lot of very different subjects. Because computers are much faster at calculating than a human and can concentrate solely on the problem at hand, not needing time to, for example, do the dishes, it can find correlations that even experts of certain topics have not discovered yet; simply by magnitude of observations.
+
+However, reinforcement learning is also not easy. To try and understand reinforcement learning, I model the Russian card game durak and let an agent learn it. It does that by first playing against players that only execute random actions and then, when it has learned enough to understand the basics of the game, by playing and improving against itself.
+
+In short, I apply what I have not learned to what I \textit{have} learned during my time in university -- durak.
+
+\subsection{Durak}
+
+Durak, like most older card games, can have a lot of variations, starting with the number of cards and subsequently players. A standard 52-card deck is used to play. The classic Russian version is played with 36 cards by removing the cards 2 to 5 of every suit.
+
+The goal of the game is to get rid of one's cards so as not to be the durak (Russian: Дура́к, ``fool''). First, a deck is shuffled and each player is dealt six cards (or, for example, only five if there are not enough cards -- durak is very flexible) and one card is laid on the table for everyone to see. This is the card determining the trump suit for the current game. The deck is placed on the open card as a talon. The revealed card is part of the talon, so the last card drawn is always a trump.
+
+There are two phases in the game: When the talon is not empty, players redraw cards from it and can not yet win. When it has been completely drawn, players can start emptying their hands and ultimately win. However, this is not exactly correct, as in durak, there is no winner, only a loser.
+
+The player with the lowest trump begins the game. They attack with a card of their choice that the next player in clockwise order then has to defend by placing a card of the same suit with a higher value onto it. The defending player can also use a trump to defend any card except another trump with a higher value. The defender's neighbours, the first and second attacker, can place any card whose value is already on the table as another attack (so the attackers can also instantly place two or more cards of the same value on the table). They can do this until there are either six (or, depending on the hand size, another value) cards on the table or as many cards as the defender has remaining in his hand.
+
+If the defense is successful, that means that no attacker can or wants to put another card as an attack, all cards on the table are removed and the players draw from the talon in order of attackers with the defender always drawing last. The defender then attacks the next player.
+If the defending player cannot defend all cards, they must pick up every card on the table and cannot start attacking the next round. Instead, the second attacker begins after the players drew cards like before.
+
+When a player has no cards left, they are out of the game and cannot become durak. In most versions, the player coming before them only takes the finished player's place after an attack has ended but in my version, they immediately move up.
+Another rule that is not in classic durak is pushing. Pushing means that, when no card has been defended, the defender can put a card of the same value as the attacking card (or cards) next to it (instead of covering it) and \textit{push} the attack to the next player.
+
+Durak is also notorious for being a game that allows cheating. Player can place anything they want on the table. Even if anybody notices their cheating, there is no penalty -- they just have to take the card back in hand. While this is great for teaching new players the rules of the game, a learning agent would be distracted by it so I will only focus on ``fair'' durak. \\
+
+The version that I will mostly concentrate on is played with a deck of 52 cards and 6 cards in hand. Pushing and immediate moving up is allowed.
+
+\section{Challenges}

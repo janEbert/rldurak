@@ -8,13 +8,15 @@ import field
 
 
 class Game:
-    """A basic class for Durak."""
+    """A basic class for durak."""
 
-    def __init__(self, names, deck_size=52, hand_size=6, full_features=True):
-        """Initialize a game of Durak with the given names, a card
+    def __init__(
+            self, names, deck_size=52, hand_size=6,
+            trump_suit=None, full_features=True):
+        """Initialize a game of durak with the given names, a card
         deck of the given size and hands of the given size.
         """
-        self.deck = deck.Deck(deck_size)
+        self.deck = deck.Deck(deck_size, trump_suit)
         self.hand_size = hand_size
         self.full_features = full_features
         self.players = []
@@ -399,8 +401,8 @@ class Game:
             return [self.prev_neighbour(self.defender_ix), self.defender_ix]
 
     def prev_neighbour(self, player_ix=None):
-        """Return the index of the player in front of the player of the
-        given index.
+        """Return the index of the player coming before the player of
+        the given index.
 
         If no index is given, Kraudia's index is used.
         """
@@ -416,8 +418,8 @@ class Game:
             return player_ix - 1
 
     def next_neighbour(self, player_ix=None):
-        """Return the index of the player behind the player of the
-        given index.
+        """Return the index of the player coming after the player of
+        the given index.
 
         If no index is given, Kraudia's index is used.
         """

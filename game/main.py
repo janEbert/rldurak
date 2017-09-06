@@ -10,10 +10,10 @@ import player as player_m
 import field
 import game as game_m
 
-# name 'Kraudia' is required to find the agent
-names = ['Kraudia', 'Bob', 'Alice']
+names = ['Bob', 'Alice']
 deck_size = 52
 hand_size = 6
+trump_suit = 2
 
 iterations = 1000
 # how often random bots wait
@@ -27,12 +27,12 @@ chi_sigma = 0.15
 
 
 def main():
-    """Main function for Durak."""
+    """Main function for durak."""
     global durak_ix, game, beta, chi
     for n in range(iterations):
         beta = min(0.98, np.random.normal(beta_mu, beta_sigma))
         chi = max(0, np.random.normal(chi_mu, chi_sigma))
-        game = game_m.Game(names, deck_size, hand_size)
+        game = game_m.Game(names, deck_size, hand_size, trump_suit)
         reshuffle(hand_size)
         if durak_ix < 0:
             beginner_ix, beginner_card = game.find_beginner()
@@ -47,7 +47,7 @@ def main():
             print('Kraudia did not lose!')
         else:
             # TODO negative reward
-            print('Kraudia is the Durak')
+            print('Kraudia is the durak')
 
 
 def reshuffle(hand_size):
@@ -324,6 +324,7 @@ def action_to_string(player_ix, action):
 
 
 if __name__ == '__main__':
+    names.append('Kraudia')
     assert len(names) == len(set(names)), 'Names must be unique'
     durak_ix = -1
     game = None
