@@ -7,8 +7,7 @@ suit_dict = dict(zip(suits, range(4)))
 
 
 def same_value(cards):
-    """Tests whether all given cards have the same value."""
-
+    """Test whether all given cards have the same value."""
     if len(cards) > 0:
         comp = cards[0].value
         for card in cards[1:]:
@@ -19,10 +18,10 @@ def same_value(cards):
 
 
 def cards_to_string(cards, numerical=False):
-    """Returns a list of cards as a string.
+    """Return a list of cards as a string.
 
-    Also allows numerical representation."""
-
+    Also allows numerical representation.
+    """
     if cards:
         card = cards[0]
         if not numerical:
@@ -42,10 +41,12 @@ def cards_to_string(cards, numerical=False):
         string = '['
     return string + ']'
 
+
 class Card:
     """A standard playing card with value and suit."""
 
     def __init__(self, value, suit, numerical=False):
+        """Construct a card via readable or numerical value or suit."""
         if not numerical:
             assert value in values and suit in suits, \
                     'Value or suit is not valid'
@@ -75,12 +76,13 @@ class Card:
 
 class Deck:
     """A deck of standard playing cards with a trump card at
-    the bottom."""
+    the bottom.
+    """
 
     def __init__(self, size=52):
-        """Initializes the deck with the lowest cards removed if size
-        is less than 52."""
-
+        """Initialize the deck with the lowest cards removed if size
+        is less than 52.
+        """
         assert size >= 20 and size <= 104 and size % 4 == 0, \
                 'Size does not make sense'
         self.size = size
@@ -89,10 +91,10 @@ class Deck:
         self.shuffle()
 
     def fill(self):
-        """Fills the deck up to the desired size (unshuffled!).
+        """Fill the deck up to the desired size (unshuffled!).
 
-        If size is greater than 52, duplicate cards are added."""
-
+        If size is greater than 52, add duplicate cards.
+        """
         if self.size <= 52:
             self.cards = [Card(value, suit) for value in values
                     for suit in suits][52 - self.size:]
@@ -102,17 +104,16 @@ class Deck:
             self.cards = self.cards + self.cards[:]
 
     def shuffle(self):
-        """Shuffles the deck's cards and updates the revealed trump."""
-
+        """Shuffle the deck's cards and update the revealed trump."""
         rshuffle(self.cards)
         self.bottom_trump = self.cards[-1]
         self.trump_suit = self.bottom_trump.suit;
         self.num_trump_suit = suit_dict[self.trump_suit];
 
     def take(self, amount):
-        """Returns and removes the given amount of cards from
-        the deck."""
-
+        """Return and remove the given amount of cards from
+        the deck.
+        """
         self.size -= amount
         if self.size < 0:
             self.size = 0

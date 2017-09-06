@@ -1,15 +1,19 @@
-import deck, player as player_m, field
+from itertools import chain
+
 import numpy as np
 
-from itertools import chain
+import deck
+import player as player_m
+import field
 
 
 class Game:
+    """A basic class for Durak."""
 
     def __init__(self, names, deck_size=52, hand_size=6, full_features=True):
-        """Initializes a game of durak with the given names, a card
-        deck of the given size and hands of the given size."""
-
+        """Initialize a game of Durak with the given names, a card
+        deck of the given size and hands of the given size.
+        """
         self.deck = deck.Deck(deck_size)
         self.hand_size = hand_size
         self.full_features = full_features
@@ -52,8 +56,6 @@ class Game:
                             self.features[13 + card.num_value] = 0
             self.players.append(new_player)
         self.player_count = len(self.players)
-        # TODO make two players possible
-        assert self.player_count > 2, 'Two players not currently supported'
         assert self.player_count > 1 and self.player_count < 8, \
                 'Player count does not make sense'
         self.field = field.Field()
@@ -61,11 +63,12 @@ class Game:
         self.defender_ix = -1
 
     def find_beginner(self):
-        """Returns the index of the player with the lowest trump and
+        """Return the index of the player with the lowest trump and
         the card or a random index and the bottom trump if no player
         has a trump in hand.
-        Also updates the defender index."""
 
+        Also update the defender index.
+        """
         mini = 13
         beginner_ix = np.random.randint(self.player_count)
         beginner_card = self.deck.bottom_trump
@@ -85,8 +88,7 @@ class Game:
         return beginner_ix, beginner_card
 
     def attack(self, attacker_ix, cards):
-        """Attacks the defender with the attacker's given cards."""
-
+        """Attack the defender with the attacker's given cards."""
         assert attacker_ix < self.player_count, 'Attacker does not exist'
         attacker = self.players[attacker_ix]
         assert not self.exceeds_field(cards), ('Number of attack cards '
@@ -120,8 +122,7 @@ class Game:
                             self.sub_neighbour_card(card)
 
     def defend(self, to_defend, card):
-        """Defends the card to defend with the given card."""
-
+        """Defend the card to defend with the given card."""
         defender = self.players[self.defender_ix]
         assert card in defender.cards, 'Defender does not have the card'
         assert self.field.on_field_attack(to_defend), ('Card to defend is not '
@@ -147,8 +148,7 @@ class Game:
                         self.sub_neighbour_card(card)
 
     def push(self, cards):
-        """Pushes the cards to the next player."""
-
+        """Push the cards to the next player."""
         assert not self.field.defended_pairs, ('Cannot push after '
                 'having defended')
         assert not self.exceeds_field(cards,
@@ -175,8 +175,7 @@ class Game:
         self.update_defender()
 
     def take(self):
-        """Makes the defender take all the cards on the field."""
-
+        """Make the defender take all the cards on the field."""
         assert not self.field.is_empty(), 'Field cannot be empty'
         # update undefended suit feature
         # TODO still rudimentary
@@ -218,9 +217,9 @@ class Game:
         self.update_defender(2)
 
     def check(self, player_ix):
-        """Tells the others that the player does not want to attack or
-        defend anymore."""
-
+        """Tell the others that the player does not want to attack or
+        defend anymore.
+        """
         assert player_ix < self.player_count, 'Player does not exist'
         self.players[player_ix].check()
         # update features
@@ -231,11 +230,11 @@ class Game:
                 self.features[27] = 1
 
     def uncheck(self, player_ix):
-        """Resets the flag for checking for the given player.
+        """Reset the flag for checking for the given player.
         
-        Should only be executed after an attack has ended,
-        not during one."""
-
+        Should only be executed after an attack has ended, not
+        during one.
+        """
         assert player_ix < self.player_count, 'Player does not exist'
         self.players[player_ix].uncheck()
         # update features
@@ -246,9 +245,9 @@ class Game:
                 self.features[27] = 0
 
     def draw(self, player_ix):
-        """Draws cards for the given player until their hand is filled
-        or the deck is empty."""
-
+        """Draw cards for the given player until their hand is filled
+        or the deck is empty.
+        """
         assert player_ix < self.player_count, 'Player does not exist'
         player = self.players[player_ix]
         amount = self.hand_size - len(player.cards)
@@ -271,10 +270,10 @@ class Game:
                                 self.features[13 + card.num_value] = 0
 
     def attack_ended(self):
-        """Tests whether an attack is over because the maximum allowed
+        """Test whether an attack is over because the maximum allowed
         number of attack cards has been placed and defended or because
-        all attackers and the defender have checked."""
-
+        all attackers and the defender have checked.
+        """
         defender = self.players[self.defender_ix]
         return (not defender.cards
             or len(self.field.defended_pairs) == self.hand_size
@@ -283,14 +282,14 @@ class Game:
             and defender.checks)
 
     def exceeds_field(self, cards, player_ix=None):
-        """Returns whether the number of cards on the field would
+        """Return whether the number of cards on the field would
         exceed the maximum allowed number of attack cards if the given
-        cards were played when the player with the
-        given index defends.
+        cards were played when the player with the given
+        index defends.
 
-        If index is not given, returns whether the number of cards
-        would exceed the maximum allowed number of cards in general."""
-
+        If no index is given, return whether the number of cards
+        would exceed the maximum allowed number of cards in general.
+        """
         count = (len(self.field.attack_cards)
                 + len(self.field.defended_pairs) + len(cards))
         if player_ix is None:
@@ -300,8 +299,9 @@ class Game:
                     self.hand_size)
 
     def get_actions(self, player_ix=None):
-        """Returns a list of possible actions for the current game
+        """Return a list of possible actions for the current game
         state for the given player index.
+
         If no index is given, kraudia_ix is used. The actions for
         checking and waiting are left out.
 
@@ -312,8 +312,8 @@ class Game:
         - numerical suit of the card to play (-1 if redundant)
         - if defending, numerical value of the card to defend (else -1)
         - if defending, numerical suit of the card to defend
-          (else -1)"""
-
+          (else -1)
+        """
         if player_ix is None:
             player_ix = self.kraudia_ix
         assert player_ix < self.player_count, 'Player does not exist'
@@ -364,36 +364,34 @@ class Game:
         return actions
 
     def attack_action(self, card):
-        """Returns an action tuple for attacking with the
-        given card."""
-
+        """Return an action tuple for attacking with the given card."""
         return (0, card.num_value, card.num_suit, -1, -1)
 
     def defend_action(self, card, to_defend):
-        """Returns an action tuple for defending the card to
-        defend with the given card."""
-
+        """Return an action tuple for defending the card to defend
+        with the given card.
+        """
         return (1, card.num_value, card.num_suit, to_defend.num_value,
                 to_defend.num_suit)
 
     def push_action(self, card):
-        """Returns an action tuple for pushing with the given card."""
-
+        """Return an action tuple for pushing with the given card."""
         return (2, card.num_value, card.num_suit, -1, -1)
 
     def check_action(self):
-        """Returns an action tuple for checking."""
-
+        """Return an action tuple for checking."""
         return (3, -1, -1, -1, -1)
 
     def wait_action(self):
-        """Returns an action tuple for waiting."""
-
+        """Return an action tuple for waiting."""
         return (4, -1, -1, -1, -1)
 
     def active_player_indices(self):
-        """Returns the indices of both attackers and the defender."""
+        """Return the indices of both attackers and the defender.
 
+        Return the indices of the attacker and defender if only two
+        players are left.
+        """
         if len(self.players) > 2:
             return [self.prev_neighbour(self.defender_ix), self.defender_ix,
                     self.next_neighbour(self.defender_ix)]
@@ -401,10 +399,11 @@ class Game:
             return [self.prev_neighbour(self.defender_ix), self.defender_ix]
 
     def prev_neighbour(self, player_ix=None):
-        """Returns the index of the player before the player of the
+        """Return the index of the player in front of the player of the
         given index.
-        If no index is given, kraudia_ix is used."""
 
+        If no index is given, Kraudia's index is used.
+        """
         if player_ix is None:
             if self.kraudia_ix == 0:
                 return self.indices_from_kraudia[self.player_count - 1]
@@ -417,10 +416,11 @@ class Game:
             return player_ix - 1
 
     def next_neighbour(self, player_ix=None):
-        """Returns the index of the player after the player of the
+        """Return the index of the player behind the player of the
         given index.
-        If no index is given, kraudia_ix is used."""
 
+        If no index is given, Kraudia's index is used.
+        """
         if player_ix is None:
             if self.kraudia_ix == self.player_count - 1:
                 return self.indices_from_kraudia[0]
@@ -433,46 +433,48 @@ class Game:
             return player_ix + 1
 
     def index_from_kraudia(self, player_ix):
-        """Returns how far the player sitting at player_ix is from
-        Kraudia in clockwise direction.
-        For example, if kraudia_ix is 2 and player_ix is 5, then this
-        returns 3 (with appropriate wrapping)."""
+        """Return how far the player at the given index' position is
+        from Kraudia in clockwise direction.
 
+        For example, if Kraudia's index is 2 and the given index is 5,
+        then return 3 (with appropriate wrapping).
+        """
         assert player_ix < self.player_count, 'Player does not exist'
         return (player_ix - self.kraudia_ix) % self.player_count 
 
     def calculate_indices_from_kraudia(self):
-        """Calculates a list of indices expressing how far away those
-        players are from Kraudia."""
-
+        """Calculate a list of indices expressing how far away those
+        players are from Kraudia.
+        """
         self.indices_from_kraudia = [self.index_from_kraudia(x)
                 for x in range(self.player_count)]
 
     def update_defender(self, count=1):
-        """Increases defender index by count (with wrapping)."""
-
+        """Increase defender index by count (with wrapping)."""
         for i in range(count):
             self.defender_ix += 1
             if self.defender_ix == self.player_count:
                 self.defender_ix = 0
 
     def sub_neighbour_card(self, card):
-        """Subtracts one from the feature belonging to the given
-        card's value in the neighbours' hands.
-        Clips to 0."""
+        """Subtract one from the feature belonging to the given card's
+        value in the neighbours' hands.
 
+        Clips to 0.
+        """
         self.features[card.num_value] = max(0,
                 self.features[card.num_value] - 1)
 
     def is_winner(self, player_ix):
-        """Whether a player has no cards left and the deck is empty."""
-
+        """Return whether a player has no cards left and the deck
+        is empty.
+        """
         return not self.players[player_ix].cards and self.deck.size == 0
 
     def remove_player(self, player_ix):
-        """Removes the player from the game.
-        Returns true if only one player is left."""
-
+        """Remove the player from the game and return true if only one
+        player is left.
+        """
         player = self.players[player_ix]
         self.players.remove(player)
         self.player_count -= 1
@@ -487,6 +489,5 @@ class Game:
         return self.player_count == 1
 
     def ended(self):
-        """Checks if no player aside from one is left."""
-
+        """Return whether no player aside from one is left."""
         return len(self.players) <= 1

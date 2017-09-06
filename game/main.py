@@ -1,14 +1,21 @@
-import deck, player as player_m, field, game as game_m
-import threading, queue
+import threading
+import queue
 from random import choice
+from time import clock
+
 import numpy as np
+
+import deck
+import player as player_m
+import field
+import game as game_m
 
 # name 'Kraudia' is required to find the agent
 names = ['Kraudia', 'Bob', 'Alice']
 deck_size = 52
 hand_size = 6
 
-iterations = 1
+iterations = 1000
 # how often random bots wait
 # calculated from a normal distribution with the given values
 beta_mu = 0.92
@@ -21,7 +28,6 @@ chi_sigma = 0.15
 
 def main():
     """Main function for Durak."""
-
     global durak_ix, game, beta, chi
     for n in range(iterations):
         beta = min(0.98, np.random.normal(beta_mu, beta_sigma))
@@ -46,8 +52,8 @@ def main():
 
 def reshuffle(hand_size):
     """Reshuffle if a player has more than the given hand size minus
-    one cards of the same suit (except trump) in their hand."""
-
+    one cards of the same suit (except trump) in their hand.
+    """
     global game
     hand_size -= 1
     for player in game.players:
@@ -71,9 +77,9 @@ def reshuffle(hand_size):
 
 
 def main_loop():
-    """Main loop for receiving and executing actions
-    and giving rewards."""
-
+    """Main loop for receiving and executing actions and
+    giving rewards.
+    """
     global game, threads, action_queue
     while not game.ended():
         active_player_indices, cleared = spawn_threads()
@@ -88,8 +94,7 @@ def main_loop():
             if action[0] == 0:
                 if game.field.is_empty():
                     game.attack(player_ix, [make_card(action)])
-                    print(game.field)
-                    print('')
+                    print(game.field, '\n')
                     action_queue.task_done()
                     if game.is_winner(player_ix):
                         cleared = clear_threads(active_player_indices)
@@ -122,13 +127,11 @@ def main_loop():
                 active_player_indices, cleared = spawn_threads()
                 for thread in threads:
                     thread.event.set()
-                print(game.field)
-                print('')
+                print(game.field, '\n')
                 continue
             elif action[0] == 3:
                 game.check(player_ix)
-            print(game.field)
-            print('')
+            print(game.field, '\n')
             action_queue.task_done()
             if game.is_winner(player_ix):
                 cleared = clear_threads(active_player_indices)
@@ -150,17 +153,16 @@ def main_loop():
 
 
 def spawn_threads():
-    """Spawns the action receiving threads for each active player and
-    returns the active players' indices and false.
+    """Spawn the action receiving threads for each active player and
+    return the active players' indices and false.
 
-    False is for a flag whether the treads have been cleared."""
-
+    False is for a flag showing whether the threads have been cleared.
+    """
     global game, threads
     active_player_indices = game.active_player_indices()
     threads = [None] * len(active_player_indices)
     for thread_ix, player_ix in enumerate(active_player_indices):
-        print(player_ix)
-        print(deck.cards_to_string(game.players[player_ix].cards))
+        print(player_ix, deck.cards_to_string(game.players[player_ix].cards))
         thread = ActionReceiver(player_ix)
         thread.start()
         threads[thread_ix] = thread
@@ -168,8 +170,7 @@ def spawn_threads():
 
 
 def clear_threads(active_player_indices):
-    """Responsibly clears the list of threads and the action queue."""
-
+    """Responsibly clear the list of threads and the action queue."""
     global game, threads, action_queue
     for thread_ix, player_ix in enumerate(active_player_indices):
         game.check(player_ix)
@@ -187,9 +188,9 @@ def clear_threads(active_player_indices):
 
 
 def end_turn(first_attacker_ix):
-    """Ends a turn by drawing cards for all attackers
-    and the defender."""
-
+    """End a turn by drawing cards for all attackers and
+    the defender.
+    """
     global game
     if first_attacker_ix == game.defender_ix:
         first_attacker_ix += 1
@@ -224,8 +225,9 @@ def end_turn(first_attacker_ix):
 
 def make_card(action):
     """Create a card from an action.
-    Creates a tuple of two cards if action is defending."""
 
+    Create a tuple of two cards if action is defending.
+    """
     if action[0] == 1:
         return (deck.Card(action[3], action[4], numerical=True),
                 deck.Card(action[1], action[2], numerical=True))
@@ -233,14 +235,16 @@ def make_card(action):
 
 
 class ActionReceiver(threading.Thread):
-    """Receives all actions for the given player for one round."""
+    """Receive all actions for the given player for one round."""
 
     def __init__(self, player_ix):
+        """Construct an action receiver with the given player index."""
         threading.Thread.__init__(self)
         self.player_ix = player_ix
         self.event = threading.Event()
 
     def run(self):
+        """Add all actions for one round."""
         global game
         player = game.players[self.player_ix]
         if False and self.player_ix == game.kraudia_ix:
@@ -298,14 +302,12 @@ class ActionReceiver(threading.Thread):
 
 def add_action(player_ix, action):
     """Add an action with the belonging player to the action queue."""
-
     global action_queue
     action_queue.put((player_ix, action))
 
 
 def action_to_string(player_ix, action):
-    """Converts a player's action to a string."""
-
+    """Convert the given player's action to a string."""
     if action[0] < 3:
         if action[0] == 1:
             to_defend, card = make_card(action)
@@ -330,4 +332,8 @@ if __name__ == '__main__':
     threads = []
     action_queue = queue.Queue(len(names) * 6)
 
+    start_time = clock()
     main()
+    duration = clock() - start_time
+    print('\nFinished after {0:.2f} seconds; average: {1:.4f} seconds '
+            'per episode'.format(duration, duration / iterations))
