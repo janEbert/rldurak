@@ -8,19 +8,24 @@ names = ['Kraudia', 'Bob', 'Alice']
 deck_size = 52
 hand_size = 6
 
-iterations = 10
+iterations = 1
 # how often random bots wait
 # calculated from a normal distribution with the given values
 beta_mu = 0.92
 beta_sigma = 0.15
+# how often bots check
+# calculated from a normal distribution with the given values
+chi_mu = 0.1
+chi_sigma = 0.15
 
 
 def main():
     """Main function for Durak."""
 
-    global durak_ix, game, beta
+    global durak_ix, game, beta, chi
     for n in range(iterations):
         beta = min(0.98, np.random.normal(beta_mu, beta_sigma))
+        chi = max(0, np.random.normal(chi_mu, chi_sigma))
         game = game_m.Game(names, deck_size, hand_size)
         reshuffle(hand_size)
         if durak_ix < 0:
@@ -39,19 +44,42 @@ def main():
             print('Kraudia is the Durak')
 
 
+def reshuffle(hand_size):
+    """Reshuffle if a player has more than the given hand size minus
+    one cards of the same suit (except trump) in their hand."""
+
+    global game
+    hand_size -= 1
+    for player in game.players:
+        counts = [0] * 4
+        for card in player.cards:
+            counts[card.num_suit] += 1
+        if (max(counts) >= hand_size
+                and counts[game.deck.num_trump_suit] < hand_size):
+            game = game_m.Game(names, deck_size, hand_size)
+            break
+    while (max(counts) >= hand_size
+            and counts[game.deck.num_trump_suit] < hand_size):
+        for player in game.players:
+            counts = [0] * 4
+            for card in player.cards:
+                counts[card.num_suit] += 1
+            if (max(counts) >= hand_size
+                    and counts[game.deck.num_trump_suit] < hand_size):
+                game = game_m.Game(names, deck_size, hand_size)
+                break
+
+
 def main_loop():
     """Main loop for receiving and executing actions
     and giving rewards."""
 
     global game, threads, action_queue
     while not game.ended():
-        active_player_indices = spawn_threads()
-        print('')
+        active_player_indices, cleared = spawn_threads()
         first_attacker_ix = active_player_indices[0]
         while not game.attack_ended():
             # TODO reward if player_ix == game.kraudia_ix
-            print('waiting for action')
-            print('active:', active_player_indices)
             player_ix, action = action_queue.get()
             if game.players[player_ix].checks:
                 action_queue.task_done()
@@ -64,10 +92,14 @@ def main_loop():
                     print('')
                     action_queue.task_done()
                     if game.is_winner(player_ix):
-                        clear_threads(active_player_indices)
+                        cleared = clear_threads(active_player_indices)
+                        if player_ix < first_attacker_ix:
+                            first_attacker_ix -= 1
+                        elif first_attacker_ix == game.player_count - 1:
+                            first_attacker_ix = 0
                         if game.remove_player(player_ix):
                             break
-                        active_player_indices = spawn_threads()
+                        active_player_indices, cleared = spawn_threads()
                     for thread in threads:
                         thread.event.set()
                     continue
@@ -77,13 +109,17 @@ def main_loop():
                 to_defend, card = make_card(action)
                 game.defend(to_defend, card)
             elif action[0] == 2:
-                clear_threads(active_player_indices)
+                cleared = clear_threads(active_player_indices)
                 game.push([make_card(action)])
                 action_queue.task_done()
                 if game.is_winner(player_ix):
+                    if player_ix < first_attacker_ix:
+                        first_attacker_ix -= 1
+                    elif first_attacker_ix == game.player_count - 1:
+                        first_attacker_ix = 0
                     if game.remove_player(player_ix):
                         break
-                active_player_indices = spawn_threads()
+                active_player_indices, cleared = spawn_threads()
                 for thread in threads:
                     thread.event.set()
                 print(game.field)
@@ -95,18 +131,105 @@ def main_loop():
             print('')
             action_queue.task_done()
             if game.is_winner(player_ix):
-                clear_threads(active_player_indices)
+                cleared = clear_threads(active_player_indices)
+                if player_ix < first_attacker_ix:
+                    first_attacker_ix -= 1
+                elif first_attacker_ix == game.player_count - 1:
+                    first_attacker_ix = 0
                 if game.remove_player(player_ix):
                     break
-                active_player_indices = spawn_threads()
+                active_player_indices, cleared = spawn_threads()
                 for thread in threads:
                     thread.event.set()
             else:
-                threads[player_ix].event.set()
+                threads[active_player_indices.index(player_ix)].event.set()
         # attack ended
-        print('attack ended\n')
-        clear_threads(active_player_indices)
+        if not cleared:
+            clear_threads(active_player_indices)
         end_turn(first_attacker_ix)
+
+
+def spawn_threads():
+    """Spawns the action receiving threads for each active player and
+    returns the active players' indices and false.
+
+    False is for a flag whether the treads have been cleared."""
+
+    global game, threads
+    active_player_indices = game.active_player_indices()
+    threads = [None] * len(active_player_indices)
+    for thread_ix, player_ix in enumerate(active_player_indices):
+        print(player_ix)
+        print(deck.cards_to_string(game.players[player_ix].cards))
+        thread = ActionReceiver(player_ix)
+        thread.start()
+        threads[thread_ix] = thread
+    return active_player_indices, False
+
+
+def clear_threads(active_player_indices):
+    """Responsibly clears the list of threads and the action queue."""
+
+    global game, threads, action_queue
+    for thread_ix, player_ix in enumerate(active_player_indices):
+        game.check(player_ix)
+        threads[thread_ix].event.set()
+        threads[thread_ix].join()
+        game.uncheck(player_ix)
+    threads.clear()
+    while not action_queue.empty():
+        try:
+            action_queue.get(timeout=1)
+        except queue.Empty:
+            continue
+        action_queue.task_done()
+    return True
+
+
+def end_turn(first_attacker_ix):
+    """Ends a turn by drawing cards for all attackers
+    and the defender."""
+
+    global game
+    if first_attacker_ix == game.defender_ix:
+        first_attacker_ix += 1
+    if first_attacker_ix == game.player_count:
+        first_attacker_ix = 0
+    while first_attacker_ix != game.defender_ix:
+        # first attacker till last attacker, then defender
+        if game.is_winner(first_attacker_ix):
+            if first_attacker_ix == game.player_count - 1:
+                first_attacker_ix = 0
+            if game.remove_player(first_attacker_ix):
+                return
+        else:
+            game.draw(first_attacker_ix)
+            first_attacker_ix += 1
+        if first_attacker_ix == game.player_count:
+            first_attacker_ix = 0
+    if first_attacker_ix == game.player_count - 1:
+        game.draw(0)
+    else:
+        game.draw(first_attacker_ix + 1)
+    if game.field.attack_cards:
+        game.take()
+    else:
+        game.field.clear()
+        if game.is_winner(first_attacker_ix):
+            game.remove_player(first_attacker_ix)
+        else:
+            game.draw(first_attacker_ix)
+            game.update_defender()
+
+
+def make_card(action):
+    """Create a card from an action.
+    Creates a tuple of two cards if action is defending."""
+
+    if action[0] == 1:
+        return (deck.Card(action[3], action[4], numerical=True),
+                deck.Card(action[1], action[2], numerical=True))
+    return deck.Card(action[1], action[2], numerical=True)
 
 
 class ActionReceiver(threading.Thread):
@@ -136,147 +259,48 @@ class ActionReceiver(threading.Thread):
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
                     and game.field.is_empty()):
-                possible_actions = game.get_actions(self.player_ix)
-                if len(possible_actions) == 1:
-                    action = possible_actions[0]
+                self.possible_actions = game.get_actions(self.player_ix)
+                if len(self.possible_actions) == 1:
+                    action = self.possible_actions[0]
                 else:
-                    action = choice(possible_actions[:-1])
+                    action = choice(self.possible_actions)
                 add_action(self.player_ix, action)
-            print('reached past first attacker')
-            self.event.wait()
-            self.event.clear()
-            possible_actions = game.get_actions(self.player_ix)
+            self.possible_actions = self.get_actions()
             # attacker
             if game.defender_ix != self.player_ix:
                 defender = game.players[game.defender_ix]
-                while not player.checks and len(possible_actions) > 1:
+                while not player.checks and len(self.possible_actions) > 1:
                     # everything is defended
-                    if ((not game.field.attack_cards
-                            or defender.checks)
+                    if ((not game.field.attack_cards or defender.checks)
                             and np.random.random() > beta):
-                        add_action(self.player_ix, choice(possible_actions))
-                        self.event.wait()
-                        self.event.clear()
-                        possible_actions = game.get_actions(self.player_ix)
+                        self.add_random_action()
             # defender
             else:
-                while not player.checks and len(possible_actions) > 1:
-                    # defender
+                while not player.checks and len(self.possible_actions) > 1:
                     if np.random.random() > beta:
-                        add_action(self.player_ix, choice(possible_actions))
-                        self.event.wait()
-                        self.event.clear()
-                        possible_actions = game.get_actions(self.player_ix)
+                        self.add_random_action()
             if not player.checks:
                 add_action(self.player_ix, game.check_action())
+
+    def get_actions(self):
+        self.event.wait()
+        self.event.clear()
+        return game.get_actions(self.player_ix)
+
+    def add_random_action(self):
+        if np.random.random() > chi:
+            add_action(self.player_ix, choice(self.possible_actions))
+            self.possible_actions = self.get_actions()
+        else:
+            add_action(self.player_ix, game.check_action())
+            self.event.wait()
 
 
 def add_action(player_ix, action):
     """Add an action with the belonging player to the action queue."""
 
     global action_queue
-    print('*** Queue: ' + action_to_string(player_ix, action) + ' ***')
     action_queue.put((player_ix, action))
-
-
-def make_card(action):
-    """Create a card from an action.
-    Creates a tuple of two cards if action is defending."""
-
-    if action[0] == 1:
-        return (deck.Card(action[3], action[4], numerical=True),
-                deck.Card(action[1], action[2], numerical=True))
-    return deck.Card(action[1], action[2], numerical=True)
-
-
-def reshuffle(hand_size):
-    """Reshuffle if a player has more than the given hand size minus
-    one cards of the same suit (except trump) in their hand."""
-
-    global game
-    hand_size -= 1
-    for player in game.players:
-        counts = [0] * 4
-        for card in player.cards:
-            counts[card.num_suit] += 1
-        if (max(counts) >= hand_size
-                and counts[game.deck.num_trump_suit] < hand_size):
-            game = game_m.Game(names, deck_size, hand_size)
-            break
-    while (max(counts) >= hand_size
-            and counts[game.deck.num_trump_suit] < hand_size):
-        for player in game.players:
-            counts = [0] * 4
-            for card in player.cards:
-                counts[card.num_suit] += 1
-            if (max(counts) >= hand_size
-                    and counts[game.deck.num_trump_suit] < hand_size):
-                game = game_m.Game(names, deck_size, hand_size)
-                break
-
-
-def end_turn(first_attacker_ix):
-    """Ends a turn by drawing cards for all attackers
-    and the defender."""
-
-    global game
-    while first_attacker_ix != game.defender_ix:
-        # first attacker till last attacker, then defender
-        if game.is_winner(first_attacker_ix):
-            if game.remove_player(first_attacker_ix):
-                return
-        else:
-            game.draw(first_attacker_ix)
-            first_attacker_ix += 1
-        if first_attacker_ix == game.player_count:
-            first_attacker_ix = 0
-    if first_attacker_ix == game.player_count - 1:
-        game.draw(0)
-    else:
-        game.draw(first_attacker_ix + 1)
-    if game.field.attack_cards:
-        game.take()
-    else:
-        game.field.clear()
-        if game.is_winner(first_attacker_ix):
-            game.remove_player(first_attacker_ix)
-        else:
-            game.draw(first_attacker_ix)
-            game.update_defender()
-
-
-def spawn_threads():
-    """Spawns the action receiving threads for each active player and
-    returns the active players' indices."""
-
-    global game, threads
-    active_player_indices = game.active_player_indices()
-    threads = [None] * len(active_player_indices)
-    for ix in active_player_indices:
-        print(ix)
-        print(deck.cards_to_string(game.players[ix].cards))
-        thread = ActionReceiver(ix)
-        thread.start()
-        threads[ix] = thread
-    return active_player_indices
-
-
-def clear_threads(active_player_indices):
-    """Responsibly clears the list of threads and the action queue."""
-
-    global game, threads, action_queue
-    for ix in active_player_indices:
-        game.check(ix)
-        threads[ix].event.set()
-        threads[ix].join()
-        game.uncheck(ix)
-    threads.clear()
-    while not action_queue.empty():
-        try:
-            action_queue.get(timeout=1)
-        except queue.Empty:
-            continue
-        action_queue.task_done()
 
 
 def action_to_string(player_ix, action):
@@ -302,6 +326,7 @@ if __name__ == '__main__':
     durak_ix = -1
     game = None
     beta = None
+    chi = None
     threads = []
     action_queue = queue.Queue(len(names) * 6)
 

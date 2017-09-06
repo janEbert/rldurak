@@ -302,8 +302,8 @@ class Game:
     def get_actions(self, player_ix=None):
         """Returns a list of possible actions for the current game
         state for the given player index.
-        If no index is given, kraudia_ix is used. The action for
-        waiting is left out.
+        If no index is given, kraudia_ix is used. The actions for
+        checking and waiting are left out.
 
         An action is a tuple consisting of:
         - action types attack (0), defend (1), push (2), check (3)
@@ -361,7 +361,6 @@ class Game:
                             actions.append(self.attack_action(card))
             else:
                 return []
-        actions += [self.check_action()]
         return actions
 
     def attack_action(self, card):
