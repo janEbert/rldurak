@@ -23,16 +23,24 @@ def cards_to_string(cards, numerical=False):
 
     Also allows numerical representation."""
 
-    if numerical:
-        string = '[' + str(cards[0])
-        for card in cards[1:]:
-            string += ', ' + str(card)
+    if cards:
+        card = cards[0]
+        if not numerical:
+            if isinstance(card, tuple):
+                string = '[(' + str(card[0]) + ', ' + str(card[1]) + ')'
+                for card in cards[1:]:
+                    string += ', (' + str(card[0]) + ', ' + str(card[1]) + ')'
+            else:
+                string = '[' + str(card)
+                for card in cards[1:]:
+                    string += ', ' + str(card)
+        else:
+            string = '[' + repr(card)
+            for card in cards[1:]:
+                string += ', ' + repr(card)
     else:
-        string = '[' + repr(cards[0])
-        for card in cards[1:]:
-            string += ', ' + repr(card)
+        string = '['
     return string + ']'
-
 
 class Card:
     """A standard playing card with value and suit."""
@@ -96,8 +104,8 @@ class Deck:
     def shuffle(self):
         """Shuffles the deck's cards and updates the revealed trump."""
 
-        rshuffle(self.cards);
-        self.bottom_trump = self.cards[len(self.cards) - 1]
+        rshuffle(self.cards)
+        self.bottom_trump = self.cards[-1]
         self.trump_suit = self.bottom_trump.suit;
         self.num_trump_suit = suit_dict[self.trump_suit];
 

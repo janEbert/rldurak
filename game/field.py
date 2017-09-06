@@ -1,3 +1,5 @@
+import deck
+
 class Field:
     """A playing field containing the deck, players and cards that are
     put for everyone to see.
@@ -14,8 +16,13 @@ class Field:
                 and self.defended_pairs == other.defended_pairs)
 
     def __str__(self):
-        return ('Attacks: ' + str(self.attack_cards)
-                + '\nDefended:' + str(self.defended_pairs))
+        return ('Attacks: ' + deck.cards_to_string(self.attack_cards)
+                + '\nDefended:' + deck.cards_to_string(self.defended_pairs))
+
+    def __repr__(self):
+        return ('Attacks: ' + deck.cards_to_string(self.attack_cards, True)
+                + '\nDefended:'
+                + deck.cards_to_string(self.defended_pairs, True))
 
     def attack(self, cards):
         """Puts the cards as attacks on the field."""
