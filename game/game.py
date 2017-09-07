@@ -8,7 +8,10 @@ import field
 
 
 class Game:
-    """A basic class for durak."""
+    """A skeleton offering the most relevant functions for durak.
+
+    Also keeps track of the features.
+    """
 
     def __init__(
             self, names, deck_size=52, hand_size=6,

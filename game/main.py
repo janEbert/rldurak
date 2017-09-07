@@ -15,11 +15,11 @@ deck_size = 52
 hand_size = 6
 trump_suit = 2
 
-iterations = 1000
+iterations = 10
 # how often random bots wait
 # calculated from a normal distribution with the given values
-beta_mu = 0.92
-beta_sigma = 0.15
+psi_mu = 0.92
+psi_sigma = 0.15
 # how often bots check
 # calculated from a normal distribution with the given values
 chi_mu = 0.1
@@ -28,9 +28,9 @@ chi_sigma = 0.15
 
 def main():
     """Main function for durak."""
-    global durak_ix, game, beta, chi
+    global durak_ix, game, psi, chi
     for n in range(iterations):
-        beta = min(0.98, np.random.normal(beta_mu, beta_sigma))
+        psi = min(0.98, np.random.normal(psi_mu, psi_sigma))
         chi = max(0, np.random.normal(chi_mu, chi_sigma))
         game = game_m.Game(names, deck_size, hand_size, trump_suit)
         reshuffle(hand_size)
@@ -40,7 +40,9 @@ def main():
                 print('Beginner was chosen randomly')
         else:
             game.defender_ix = durak_ix
-        main_loop()
+        if not main_loop():
+            print('Program was shut down from outside')
+            break
         durak_ix = names.index(game.players[0].name)
         if game.kraudia_ix < 0:
             # TODO positive reward
@@ -86,7 +88,10 @@ def main_loop():
         first_attacker_ix = active_player_indices[0]
         while not game.attack_ended():
             # TODO reward if player_ix == game.kraudia_ix
-            player_ix, action = action_queue.get()
+            try:
+                player_ix, action = action_queue.get(timeout=2)
+            except (queue.Empty, KeyboardInterrupt):
+                return False
             if game.players[player_ix].checks:
                 action_queue.task_done()
                 continue
@@ -150,6 +155,7 @@ def main_loop():
         if not cleared:
             clear_threads(active_player_indices)
         end_turn(first_attacker_ix)
+    return Truer
 
 
 def spawn_threads():
@@ -181,7 +187,7 @@ def clear_threads(active_player_indices):
     while not action_queue.empty():
         try:
             action_queue.get(timeout=1)
-        except queue.Empty:
+        except (queue.Empty, KeyboardInterrupt):
             continue
         action_queue.task_done()
     return True
@@ -273,21 +279,22 @@ class ActionReceiver(threading.Thread):
             # attacker
             if game.defender_ix != self.player_ix:
                 defender = game.players[game.defender_ix]
-                while not player.checks and len(self.possible_actions) > 1:
+                while not player.checks and self.possible_actions:
                     # everything is defended
                     if ((not game.field.attack_cards or defender.checks)
-                            and np.random.random() > beta):
+                            and np.random.random() > psi):
                         self.add_random_action()
             # defender
             else:
-                while not player.checks and len(self.possible_actions) > 1:
-                    if np.random.random() > beta:
+                while not player.checks and self.possible_actions:
+                    if np.random.random() > psi:
                         self.add_random_action()
             if not player.checks:
                 add_action(self.player_ix, game.check_action())
 
     def get_actions(self):
-        self.event.wait()
+        if not self.event.wait(2):
+            return []
         self.event.clear()
         return game.get_actions(self.player_ix)
 
@@ -297,7 +304,8 @@ class ActionReceiver(threading.Thread):
             self.possible_actions = self.get_actions()
         else:
             add_action(self.player_ix, game.check_action())
-            self.event.wait()
+            if not self.event.wait(2):
+                self.possible_actions = []
 
 
 def add_action(player_ix, action):
@@ -328,7 +336,7 @@ if __name__ == '__main__':
     assert len(names) == len(set(names)), 'Names must be unique'
     durak_ix = -1
     game = None
-    beta = None
+    psi = None
     chi = None
     threads = []
     action_queue = queue.Queue(len(names) * 6)
