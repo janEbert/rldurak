@@ -2,9 +2,9 @@ from itertools import chain
 
 import numpy as np
 
-import deck
-import player as player_m
-import field
+import game.deck as deck
+import game.player as player_m
+import game.field as field
 
 
 class Game:
@@ -209,7 +209,8 @@ class Game:
         self.update_defender()
 
     def take(self):
-        """Make the defender take all the cards on the field."""
+        """Make the defender take all the cards on the field and
+        return the amount of cards taken."""
         assert not self.field.is_empty(), 'Field cannot be empty'
         # update undefended suit feature
         # TODO still rudimentary
@@ -266,6 +267,7 @@ class Game:
                         if card.suit != self.deck.trump_suit:
                             self.features[card.num_value] += 1
         self.update_defender(2)
+        return len(cards)
 
     def check(self, player_ix):
         """Tell the others that the player does not want to attack or

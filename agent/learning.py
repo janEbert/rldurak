@@ -1,20 +1,21 @@
-from keras.models import Sequential
-from keras.layers import Dense
+from keras.models import Model, load_model
+from keras.layers import Input, Dense
+from keras.layers.merge import concatenate
 from keras.optimizers import RMSprop, SGD
 
 
 def create_model():
-    model = Sequential()
+    inputs = Input(shape=(55,))
+    x = Dense(150, activation='relu')(inputs)
+    x = Dense(100, activation='relu')(x)
+    attack = Dense(2)(x)
+    defend = Dense(4)(x)
+    push = Dense(2)(x)
+    check = Dense(1)(x)
+    wait = Dense(1)(x)
+    outputs = concatenate([attack, defend, push, check, wait])
 
-    model.add(Dense(150, activation='relu', input_shape=(55,))) 
-    model.add(Dense(100, activation='relu'))
-    attack = Dense(2)
-    defend = Dense(4)
-    push = Dense(2)
-    check = Dense(1)
-    wait = Dense(1)
-    model.add(Merge([attack, defend, push, check, wait]))
-
+    model = Model(inputs=inputs, outputs=outputs)
     model.compile(optimizer=RMSprop(lr=0.1), loss='mse')
     # model.compile(optimizer=SGD(lr=0.1, decay=0.0), loss='mse')
     return model

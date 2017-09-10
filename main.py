@@ -5,11 +5,11 @@ from time import clock
 
 import numpy as np
 
-import deck
-import player as player_m
-import field
-import game as game_m
-
+import agent.learning as learning
+import game.deck as deck
+import game.player as player_m
+import game.field as field
+import game.game as game_m
 
 names = ['Alice', 'Bob']
 deck_size = 52 # cannot be changed at the moment
@@ -20,15 +20,19 @@ only_ais = False
 
 verbose = False # whether to print game progress
 episodes = 1
-epsilon = 0.1 # how often a random action is taken by AIs
+gamma = 0.99
+# starting value for how often a random action is taken by AIs
+# linearly anneals 0.1 in the first 3000 episodes
+epsilon = 1
 # how often random bots wait
 # calculated from a normal distribution with the given values
-psi_mu = 0.92
-psi_sigma = 0.15
+psi_mu = 0.95
+psi_sigma = 0.1
 # how often bots check
 # calculated from a normal distribution with the given values
-chi_mu = 0.8
+chi_mu = 0.08
 chi_sigma = 0.12
+max_experience_count = 300
 
 
 def main():
@@ -44,7 +48,7 @@ def main():
             beginner_ix, beginner_card = game.find_beginner()
             if beginner_card == game.deck.bottom_trump:
                 if verbose:
-                    print('Beginner was chosen randomly')
+                    print('Beginner was chosen randomly\n')
         else:
             game.defender_ix = durak_ix
         if not main_loop():
@@ -93,11 +97,22 @@ def main_loop():
     """Main loop for receiving and executing actions and
     giving rewards.
     """
-    global game, threads, action_queue
+    global game, threads, action_queue, epsilon
+    player_ix = -1
+    state = game.features
+    action = ()
+    old_state = state.copy()
     while not game.ended():
         active_player_indices, cleared = spawn_threads()
         first_attacker_ix = active_player_indices[0]
         while not game.attack_ended():
+            if (only_ais or player_ix == game.kraudia_ix
+                    and game.kraudia_ix >= 0) and action:
+                experience = (old_state, action, reward, state)
+                if epsilon >= 0.1003:
+                    epsilon -= 0.0003
+                store_experience(experience)
+                old_state = state.copy()
             # TODO reward if player_ix == game.kraudia_ix
             # and observe new state (or in thread)
             try:
@@ -215,11 +230,27 @@ def clear_threads(active_player_indices):
     return True
 
 
+def store_experience(experience):
+    """Store an experience and overwrite old ones if necessary."""
+    global experiences, experience_ix
+    if len(experiences) == max_experience_count:
+        experiences[experience_ix] = experience
+        experience_ix += 1
+        if experience_ix == max_experience_count:
+            experience_ix = 0
+    else:
+        experiences.append(experience)
+
+
 def end_turn(first_attacker_ix):
     """End a turn by drawing cards for all attackers and
     the defender.
     """
     global game
+    if only_ais:
+        rewards = np.zeros(game.player_count)
+    elif game.kraudia_ix >= 0:
+        rewards = 0
     if first_attacker_ix == game.defender_ix:
         first_attacker_ix += 1
     if first_attacker_ix == game.player_count:
@@ -241,7 +272,9 @@ def end_turn(first_attacker_ix):
     else:
         game.draw(first_attacker_ix + 1)
     if game.field.attack_cards:
-        game.take()
+        if (only_ais or game.defender_ix == game.kraudia_ix
+                and game.kraudia_ix >= 0):
+            rewards[game.defender_ix] -= game.take()
     else:
         game.field.clear()
         if game.is_winner(first_attacker_ix):
@@ -258,6 +291,7 @@ class ActionReceiver(threading.Thread):
         """Construct an action receiver with the given player index."""
         threading.Thread.__init__(self)
         self.player_ix = player_ix
+        self.reward = 0
         self.event = threading.Event()
 
     def run(self):
@@ -341,6 +375,9 @@ class ActionReceiver(threading.Thread):
         if np.random.random() > epsilon:
             # TODO receive action from neural net
             pass
+            if action not in self.possible_actions:
+                # TODO high negative reward
+                pass
         else:
             action = choice(self.possible_actions)
             self.add_action(action)
@@ -404,7 +441,14 @@ if __name__ == '__main__':
     chi = None
     threads = []
     action_queue = queue.Queue(len(names) * 6)
+    experiences = []
+    experience_ix = 0
 
+    start_time = clock()
+    model = learning.create_model()
+    duration = clock() - start_time
+
+    print('Starting to play\n')
     start_time = clock()
     main()
     duration = clock() - start_time
