@@ -15,19 +15,26 @@ class Game:
 
     def __init__(
             self, names, deck_size=52, hand_size=6,
-            trump_suit=None, full_features=True):
+            trump_suit=None, only_ais=False, full_features=True):
         """Initialize a game of durak with the given names, a card
         deck of the given size and hands of the given size.
         """
+        if deck_size != 52:
+            print('Only default deck size of 52 is supported at the moment!')
         self.deck = deck.Deck(deck_size, trump_suit)
         self.hand_size = hand_size
+        self.only_ais = only_ais
         self.full_features = full_features
         self.players = []
         self.kraudia_ix = -1
+        self.player_count = len(names)
+        assert self.player_count > 1 and self.player_count < 8, \
+                'Player count does not make sense'
         # feature initialization
         if full_features:
             # 52 features for each card's location
-            #   -3 is unknown, -2 is out of game, -1 is on field
+            #   -4 is bottom trump, -3 is unknown, -2 is out of game
+            #   and -1 is on field
             #   >= 0 are indices from Kraudia's position
             # 1 feature for which suit next player could not defend
             #   num_suit of card
@@ -35,36 +42,50 @@ class Game:
             #   binary
             # 1 feature for deck size
             #   size of deck
-            self.features = np.full(55, -3)
-            self.features[52] = -1
-            self.features[53] = 0
-            self.features[54] = deck_size
+            if self.only_ais:
+                self.indices_from = []
+                self.features = np.full((self.player_count, 55), -3)
+                self.features[:, self.deck.bottom_trump.index] = -4
+                self.features[:, 52] = -1
+                self.features[:, 53] = 0
+                self.features[:, 54] = self.deck.size
+            else:
+                self.features = np.full(55, -3)
+                self.features[self.deck.bottom_trump.index] = -4
+                self.features[52] = -1
+                self.features[53] = 0
+                self.features[54] = self.deck.size
         else:
             # 13 features for number of cards in both neighbour's hands
             # 13 features for each trump card's location
             # 1 feature for which suit next player could not defend
             # 1 feature for deck size
+            if self.only_ais:
+                print('Game is not configured for non-full features and only '
+                        'ais yet!')
+            print('Non-full features not as well supported as full features!')
             self.features = np.full(29, -1)
             self.features[13:26] = -2
             self.features[26] = -1
             self.features[27] = 0
-            self.features[28] = deck_size
-        for i, name in enumerate(names):
+            self.features[28] = self.deck.size
+        for ix, name in enumerate(names):
             new_player = player_m.Player(name, self.deck.take(self.hand_size))
-            if name == 'Kraudia' and self.kraudia_ix < 0:
-                self.kraudia_ix = i
+            # update features
+            if self.only_ais:
                 for card in new_player.cards:
-                    if card.suit == self.deck.trump_suit:
-                        if full_features:
-                            self.features[card.index] = 0
-                        else:
-                            self.features[13 + card.num_value] = 0
+                    self.features[ix, card.index] = 0
+                self.indices_from.append(self.calculate_indices_from(ix))
+            elif name == 'Kraudia' and self.kraudia_ix < 0:
+                self.kraudia_ix = ix
+                for card in new_player.cards:
+                    if full_features:
+                        self.features[card.index] = 0
+                    elif card.suit == self.deck.trump_suit:
+                        self.features[13 + card.num_value] = 0
+                self.indices_from_kraudia = self.calculate_indices_from()
             self.players.append(new_player)
-        self.player_count = len(self.players)
-        assert self.player_count > 1 and self.player_count < 8, \
-                'Player count does not make sense'
         self.field = field.Field()
-        self.calculate_indices_from_kraudia()
         self.defender_ix = -1
 
     def find_beginner(self):
@@ -77,14 +98,14 @@ class Game:
         mini = 13
         beginner_ix = np.random.randint(self.player_count)
         beginner_card = self.deck.bottom_trump
-        for i, player in enumerate(self.players):
+        for ix, player in enumerate(self.players):
             if (mini == 2 or self.deck.bottom_trump.num_value == 2
                     and mini == 3):
                 break
             for card in player.cards:
                 if card.suit == self.deck.trump_suit and card.num_value < mini:
                     mini = card.num_value
-                    beginner_ix = i
+                    beginner_ix = ix
                     beginner_card = card
                     if (mini == 2 or self.deck.bottom_trump.num_value == 2
                             and mini == 3):
@@ -112,7 +133,10 @@ class Game:
         attacker.attack(cards)
         self.field.attack(cards)
         # update features
-        if self.kraudia_ix >= 0:
+        if self.only_ais:
+            for card in cards:
+                self.features[:, card.index] = -1
+        elif self.kraudia_ix >= 0:
             if self.full_features:
                 for card in cards:
                     self.features[card.index] = -1
@@ -140,7 +164,9 @@ class Game:
         defender.defend(to_defend, card)
         self.field.defend(to_defend, card)
         # update features
-        if self.kraudia_ix >= 0:
+        if self.only_ais:
+            self.features[:, card.index] = -1
+        elif self.kraudia_ix >= 0:
             if self.full_features:
                 self.features[card.index] = -1
             else:
@@ -162,7 +188,10 @@ class Game:
         self.players[self.defender_ix].push(cards)
         self.field.push(cards)
         # update features
-        if self.kraudia_ix >= 0:
+        if self.only_ais:
+            for card in cards:
+                self.features[:, card.index] = -1
+        elif self.kraudia_ix >= 0:
             if self.full_features:
                 for card in cards:
                     self.features[card.index] = -1
@@ -184,7 +213,19 @@ class Game:
         assert not self.field.is_empty(), 'Field cannot be empty'
         # update undefended suit feature
         # TODO still rudimentary
-        if self.defender_ix == self.next_neighbour() and self.kraudia_ix >= 0:
+        if self.only_ais:
+            self.features[self.prev_neighbour(self.defender_ix), 52] = \
+                    self.field.attack_cards[0].num_suit
+            if len(self.field.attack_cards) > 1:
+                attack_suits = [card.suit for card in self.field.attack_cards]
+                for (attack_card, defense_card) in self.field.defended_pairs:
+                    if (attack_card.suit != self.deck.trump_suit
+                            and defense_card.suit == self.deck.trump_suit
+                            and attack_card.suit in attack_suits):
+                        self.features[self.prev_neighbour(self.defender_ix),
+                                52] = attack_card.num_suit
+                        break            
+        elif self.defender_ix == self.next_neighbour() and self.kraudia_ix >= 0:
             if self.full_features:
                 self.features[52] = self.field.attack_cards[0].num_suit
             else:
@@ -203,7 +244,12 @@ class Game:
         cards = self.field.take()
         self.players[self.defender_ix].take(cards)
         # update features
-        if self.kraudia_ix >= 0:
+        if self.only_ais:
+            for ix in range(self.player_count):
+                for card in cards:
+                    self.features[ix, card.index] = self.indices_from[ix,
+                            self.defender_ix]
+        elif self.kraudia_ix >= 0:
             if self.full_features:
                 for card in cards:
                     self.features[card.index] = self.indices_from_kraudia[
@@ -213,7 +259,7 @@ class Game:
                 for card in cards:
                     if card.suit == self.deck.trump_suit:
                         self.features[13 + card.num_value] = \
-                                self.index_from_kraudia(self.defender_ix)
+                                self.indices_from_kraudia[self.defender_ix]
                 if (self.defender_ix == self.prev_neighbour()
                         or self.defender_ix == self.next_neighbour()):
                     for card in cards:
@@ -227,12 +273,15 @@ class Game:
         """
         assert player_ix < self.player_count, 'Player does not exist'
         self.players[player_ix].check()
-        # update features
-        if player_ix == self.defender_ix and self.kraudia_ix >= 0:
-            if self.full_features:
-                self.features[53] = 1
-            else:
-                self.features[27] = 1
+        if player_ix == self.defender_ix:
+            # update features
+            if self.only_ais:
+                self.features[:, 53] = 1
+            elif self.kraudia_ix >= 0:
+                if self.full_features:
+                    self.features[53] = 1
+                else:
+                    self.features[27] = 1
 
     def uncheck(self, player_ix):
         """Reset the flag for checking for the given player.
@@ -242,12 +291,15 @@ class Game:
         """
         assert player_ix < self.player_count, 'Player does not exist'
         self.players[player_ix].uncheck()
-        # update features
-        if player_ix == self.defender_ix and self.kraudia_ix >= 0:
-            if self.full_features:
-                self.features[53] = 0
-            else:
-                self.features[27] = 0
+        if player_ix == self.defender_ix:
+            # update features
+            if self.only_ais:
+                self.features[:, 53] = 0
+            elif self.kraudia_ix >= 0:
+                if self.full_features:
+                    self.features[53] = 0
+                else:
+                    self.features[27] = 0
 
     def draw(self, player_ix):
         """Draw cards for the given player until their hand is filled
@@ -260,7 +312,15 @@ class Game:
             cards = self.deck.take(amount)
             player.take(cards)
             # update features
-            if self.kraudia_ix >= 0:
+            if self.only_ais:
+                self.features[:, 54] = self.deck.size
+                for card in cards:
+                    self.features[player_ix, card.index] = 0
+                if self.deck.size == 0:
+                    for ix in range(self.player_count):
+                        self.features[:, self.deck.bottom_trump.index] = \
+                                self.indices_from[ix, player_ix]
+            elif self.kraudia_ix >= 0:
                 if self.full_features:
                     self.features[54] = self.deck.size
                 else:
@@ -273,6 +333,14 @@ class Game:
                         for card in cards:
                             if card.suit == self.deck.trump_suit:
                                 self.features[13 + card.num_value] = 0
+                elif self.deck.size == 0:
+                    if self.full_features:
+                        self.features[self.deck.bottom_trump.index] = \
+                                self.indices_from_kraudia[player_ix]
+                    else:
+                        self.features[13 + self.deck.bottom_trump.num_value] \
+                                = self.indices_from_kraudia[player_ix]
+
 
     def attack_ended(self):
         """Test whether an attack is over because the maximum allowed
@@ -281,10 +349,11 @@ class Game:
         """
         defender = self.players[self.defender_ix]
         return (not defender.cards
-            or len(self.field.defended_pairs) == self.hand_size
-            or self.players[self.prev_neighbour(self.defender_ix)].checks
-            and self.players[self.next_neighbour(self.defender_ix)].checks
-            and defender.checks)
+                or len(self.field.attack_cards)
+                + len(self.field.defended_pairs) == self.hand_size
+                or self.players[self.prev_neighbour(self.defender_ix)].checks
+                and self.players[self.next_neighbour(self.defender_ix)].checks
+                and defender.checks)
 
     def exceeds_field(self, cards, player_ix=None):
         """Return whether the number of cards on the field would
@@ -325,8 +394,6 @@ class Game:
         actions = []
         player = self.players[player_ix]
         pushed = 0
-        if player.checks:
-            return []
         if player_ix == self.defender_ix:
             # actions as defender
             for to_defend in self.field.attack_cards:
@@ -439,21 +506,28 @@ class Game:
         else:
             return player_ix + 1
 
-    def index_from_kraudia(self, player_ix):
+    def index_from(self, player_ix, from_ix=None):
         """Return how far the player at the given index' position is
-        from Kraudia in clockwise direction.
+        from the other index in clockwise direction.
 
-        For example, if Kraudia's index is 2 and the given index is 5,
-        then return 3 (with appropriate wrapping).
+        For example, if from_ix is 2 and player_ix is 5, then return 3
+        (with appropriate wrapping). If from_ix is not given,
+        use Kraudia's index.
         """
         assert player_ix < self.player_count, 'Player does not exist'
-        return (player_ix - self.kraudia_ix) % self.player_count 
+        if from_ix is None:
+            from_ix = self.kraudia_ix 
+        return (player_ix - from_ix) % self.player_count
 
-    def calculate_indices_from_kraudia(self):
+    def calculate_indices_from(self, player_ix=None):
         """Calculate a list of indices expressing how far away those
-        players are from Kraudia.
+        players are from the given player index.
+
+        If no index is given, use Kraudia's.
         """
-        self.indices_from_kraudia = [self.index_from_kraudia(x)
+        if player_ix is None:
+            player_ix = self.kraudia_ix
+        return [self.index_from(x, player_ix)
                 for x in range(self.player_count)]
 
     def update_defender(self, count=1):
@@ -492,7 +566,13 @@ class Game:
         elif player_ix == self.kraudia_ix:
             self.kraudia_ix = -1
             return self.player_count == 1
-        self.calculate_indices_from_kraudia()
+        if self.only_ais:
+            self.features = np.delete(self.features, player_ix, 0)
+            self.indices_from = []
+            for ix in range(self.player_count):
+                self.indices_from.append(self.calculate_indices_from(ix))
+        elif self.kraudia_ix >= 0:
+            self.indices_from_kraudia = self.calculate_indices_from()
         return self.player_count == 1
 
     def ended(self):

@@ -1,16 +1,20 @@
 from keras.models import Sequential
-from keras.layers import Dense, Masking
-from keras.optimizers import SGD
-from keras.preprocessing.sequences import pad_sequences
+from keras.layers import Dense
+from keras.optimizers import RMSprop, SGD
 
-model = Sequential()
 
-max_len = 100
-pad_sequences(sequence, max_len)
-model.add(Masking(input_shape=(1, max_len)))
-model.add(Dense(32, activation='relu')) 
-model.add(Dense(16, activation='relu'))
-model.add(Dense(5))
+def create_model():
+    model = Sequential()
 
-model.compile(optimizer=SGD(lr=0.1, decay=0.0), loss='mse')
+    model.add(Dense(150, activation='relu', input_shape=(55,))) 
+    model.add(Dense(100, activation='relu'))
+    attack = Dense(2)
+    defend = Dense(4)
+    push = Dense(2)
+    check = Dense(1)
+    wait = Dense(1)
+    model.add(Merge([attack, defend, push, check, wait]))
 
+    model.compile(optimizer=RMSprop(lr=0.1), loss='mse')
+    # model.compile(optimizer=SGD(lr=0.1, decay=0.0), loss='mse')
+    return model

@@ -10,48 +10,55 @@ import player as player_m
 import field
 import game as game_m
 
-names = ['Bob', 'Alice']
-deck_size = 52
-hand_size = 6
-trump_suit = 2
 
-episodes = 10
-# how often a random action is taken
-epsilon = 0.1
+names = ['Alice', 'Bob']
+deck_size = 52 # cannot be changed at the moment
+hand_size = 6
+trump_suit = 2 # hearts
+# whether only AIs are in the game or one AI and random bots
+only_ais = False
+
+verbose = False # whether to print game progress
+episodes = 1
+epsilon = 0.1 # how often a random action is taken by AIs
 # how often random bots wait
 # calculated from a normal distribution with the given values
 psi_mu = 0.92
 psi_sigma = 0.15
 # how often bots check
 # calculated from a normal distribution with the given values
-chi_mu = 0.1
-chi_sigma = 0.15
+chi_mu = 0.8
+chi_sigma = 0.12
 
 
 def main():
     """Main function for durak."""
     global durak_ix, game, psi, chi
     for n in range(episodes):
-        psi = min(0.98, np.random.normal(psi_mu, psi_sigma))
-        chi = max(0, np.random.normal(chi_mu, chi_sigma))
-        game = game_m.Game(names, deck_size, hand_size, trump_suit)
+        if not only_ais:
+            psi = min(0.98, np.random.normal(psi_mu, psi_sigma))
+            chi = max(0, np.random.normal(chi_mu, chi_sigma))
+        game = game_m.Game(names, deck_size, hand_size, trump_suit, only_ais)
         reshuffle(hand_size)
         if durak_ix < 0:
             beginner_ix, beginner_card = game.find_beginner()
             if beginner_card == game.deck.bottom_trump:
-                print('Beginner was chosen randomly')
+                if verbose:
+                    print('Beginner was chosen randomly')
         else:
             game.defender_ix = durak_ix
         if not main_loop():
-            print('Program was shut down from outside')
+            print('Program was shut down from outside\n')
             break
         durak_ix = names.index(game.players[0].name)
         if game.kraudia_ix < 0:
             # TODO positive reward
-            print('Kraudia did not lose!')
+            if verbose:
+                print('Kraudia did not lose!\n')
         else:
             # TODO negative reward
-            print('Kraudia is the durak')
+            if verbose:
+                print('Kraudia is the durak...\n')
 
 
 def reshuffle(hand_size):
@@ -66,7 +73,8 @@ def reshuffle(hand_size):
             counts[card.num_suit] += 1
         if (max(counts) >= hand_size
                 and counts[game.deck.num_trump_suit] < hand_size):
-            game = game_m.Game(names, deck_size, hand_size)
+            game = game_m.Game(names, deck_size, hand_size, trump_suit,
+                    only_ais)
             break
     while (max(counts) >= hand_size
             and counts[game.deck.num_trump_suit] < hand_size):
@@ -76,7 +84,8 @@ def reshuffle(hand_size):
                 counts[card.num_suit] += 1
             if (max(counts) >= hand_size
                     and counts[game.deck.num_trump_suit] < hand_size):
-                game = game_m.Game(names, deck_size, hand_size)
+                game = game_m.Game(names, deck_size, hand_size, trump_suit,
+                        only_ais)
                 break
 
 
@@ -90,18 +99,22 @@ def main_loop():
         first_attacker_ix = active_player_indices[0]
         while not game.attack_ended():
             # TODO reward if player_ix == game.kraudia_ix
+            # and observe new state (or in thread)
             try:
                 player_ix, action = action_queue.get(timeout=2)
             except (queue.Empty, KeyboardInterrupt):
+                clear_threads(active_player_indices)
                 return False
             if game.players[player_ix].checks:
                 action_queue.task_done()
                 continue
-            print(action_to_string(player_ix, action))
+            if verbose:
+                print(action_to_string(player_ix, action))
             if action[0] == 0:
                 if game.field.is_empty():
                     game.attack(player_ix, [make_card(action)])
-                    print(game.field, '\n')
+                    if verbose:
+                        print(game.field, '\n')
                     action_queue.task_done()
                     if game.is_winner(player_ix):
                         cleared = clear_threads(active_player_indices)
@@ -134,11 +147,13 @@ def main_loop():
                 active_player_indices, cleared = spawn_threads()
                 for thread in threads:
                     thread.event.set()
-                print(game.field, '\n')
+                if verbose:
+                    print(game.field, '\n')
                 continue
             elif action[0] == 3:
                 game.check(player_ix)
-            print(game.field, '\n')
+            if verbose:
+                print(game.field, '\n')
             action_queue.task_done()
             if game.is_winner(player_ix):
                 cleared = clear_threads(active_player_indices)
@@ -170,7 +185,8 @@ def spawn_threads():
     active_player_indices = game.active_player_indices()
     threads = [None] * len(active_player_indices)
     for thread_ix, player_ix in enumerate(active_player_indices):
-        print(player_ix, deck.cards_to_string(game.players[player_ix].cards))
+        if verbose:
+            print(player_ix, deck.cards_to_string(game.players[player_ix].cards))
         thread = ActionReceiver(player_ix)
         thread.start()
         threads[thread_ix] = thread
@@ -178,7 +194,11 @@ def spawn_threads():
 
 
 def clear_threads(active_player_indices):
-    """Responsibly clear the list of threads and the action queue."""
+    """Responsibly clear the list of threads and the action queue.
+
+    Return true for a flag showing whether the threads have
+    been cleared.
+    """
     global game, threads, action_queue
     for thread_ix, player_ix in enumerate(active_player_indices):
         game.check(player_ix)
@@ -244,7 +264,7 @@ class ActionReceiver(threading.Thread):
         """Add all actions for one round."""
         global game
         player = game.players[self.player_ix]
-        if self.player_ix == game.kraudia_ix:
+        if False and (only_ais or self.player_ix == game.kraudia_ix):
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
                     and game.field.is_empty()):
@@ -253,15 +273,15 @@ class ActionReceiver(threading.Thread):
             else:
                 self.possible_actions = self.get_extended_actions()
             # attacker
-            if game.defender_ix != self.player_ix
+            if game.defender_ix != self.player_ix:
                 defender = game.players[game.defender_ix]
-                while self.possible_actions:
+                while not player.checks and self.possible_actions:
                     # everything is defended
                     if not game.field.attack_cards or defender.checks:
                         self.add_selected_action()
             # defender
             else:
-                while self.possible_actions:
+                while not player.checks and self.possible_actions:
                     self.add_selected_action()
 
         else:
@@ -274,14 +294,14 @@ class ActionReceiver(threading.Thread):
             # attacker
             if game.defender_ix != self.player_ix:
                 defender = game.players[game.defender_ix]
-                while self.possible_actions:
+                while not player.checks and self.possible_actions:
                     # everything is defended
                     if ((not game.field.attack_cards or defender.checks)
                             and np.random.random() > psi):
                         self.add_random_action()
             # defender
             else:
-                while self.possible_actions:
+                while not player.checks and self.possible_actions:
                     if np.random.random() > psi:
                         self.add_random_action()
         if not player.checks:
@@ -293,7 +313,7 @@ class ActionReceiver(threading.Thread):
 
         If the wait time is exceeded, return an empty list.
         """
-        if not self.event.wait(2):
+        if not self.event.wait(2.0):
             return []
         self.event.clear()
         return game.get_actions(self.player_ix) + [game.check_action(),
@@ -305,7 +325,7 @@ class ActionReceiver(threading.Thread):
 
         If the wait time is exceeded, return an empty list.
         """
-        if not self.event.wait(2):
+        if not self.event.wait(2.0):
             return []
         self.event.clear()
         return game.get_actions(self.player_ix)
@@ -320,11 +340,13 @@ class ActionReceiver(threading.Thread):
     def add_selected_action(self):
         if np.random.random() > epsilon:
             # TODO receive action from neural net
+            pass
         else:
             action = choice(self.possible_actions)
             self.add_action(action)
         # TODO store experience
         self.possible_actions = self.get_extended_actions()
+        # TODO maybe observe new state here?
 
     def add_random_action(self):
         """Add a random action to the action queue or check at random.
@@ -336,7 +358,7 @@ class ActionReceiver(threading.Thread):
             self.possible_actions = self.get_actions()
         else:
             self.add_action(game.check_action())
-            if not self.event.wait(2):
+            if not self.event.wait(2.0):
                 self.possible_actions = []
 
 
@@ -369,8 +391,13 @@ def make_card(action):
 
 
 if __name__ == '__main__':
-    names.append('Kraudia')
+    if not only_ais and 'Kraudia' not in names:
+        names.append('Kraudia')
     assert len(names) == len(set(names)), 'Names must be unique'
+    if episodes == 1:
+        plural_s = ''
+    else:
+        plural_s = 's'
     durak_ix = -1
     game = None
     psi = None
@@ -381,5 +408,6 @@ if __name__ == '__main__':
     start_time = clock()
     main()
     duration = clock() - start_time
-    print('\nFinished after {0:.2f} seconds; average: {1:.4f} seconds '
-            'per episode'.format(duration, duration / episodes))
+    print('Finished {0} episode{1} after {2:.2f} seconds; average: {3:.4f} '
+            'seconds per episode'.format(episodes, plural_s, duration,
+            duration / episodes))
