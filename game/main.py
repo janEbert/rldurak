@@ -15,7 +15,7 @@ deck_size = 52
 hand_size = 6
 trump_suit = 2
 
-iterations = 10
+episodes = 10
 # how often random bots wait
 # calculated from a normal distribution with the given values
 psi_mu = 0.92
@@ -29,7 +29,7 @@ chi_sigma = 0.15
 def main():
     """Main function for durak."""
     global durak_ix, game, psi, chi
-    for n in range(iterations):
+    for n in range(episodes):
         psi = min(0.98, np.random.normal(psi_mu, psi_sigma))
         chi = max(0, np.random.normal(chi_mu, chi_sigma))
         game = game_m.Game(names, deck_size, hand_size, trump_suit)
@@ -155,7 +155,7 @@ def main_loop():
         if not cleared:
             clear_threads(active_player_indices)
         end_turn(first_attacker_ix)
-    return Truer
+    return True
 
 
 def spawn_threads():
@@ -345,4 +345,4 @@ if __name__ == '__main__':
     main()
     duration = clock() - start_time
     print('\nFinished after {0:.2f} seconds; average: {1:.4f} seconds '
-            'per episode'.format(duration, duration / iterations))
+            'per episode'.format(duration, duration / episodes))
