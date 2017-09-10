@@ -101,6 +101,10 @@ def main_loop():
     player_ix = -1
     state = game.features
     action = ()
+    if only_ais:
+        rewards = np.ones(game.player_count)
+    else:
+        rewards = 0 # TODO remove
     old_state = state.copy()
     while not game.ended():
         active_player_indices, cleared = spawn_threads()
@@ -108,7 +112,7 @@ def main_loop():
         while not game.attack_ended():
             if (only_ais or player_ix == game.kraudia_ix
                     and game.kraudia_ix >= 0) and action:
-                experience = (old_state, action, reward, state)
+                experience = (old_state, action, rewards, state)
                 if epsilon >= 0.1003:
                     epsilon -= 0.0003
                 store_experience(experience)
@@ -118,7 +122,7 @@ def main_loop():
             try:
                 player_ix, action = action_queue.get(timeout=2)
             except (queue.Empty, KeyboardInterrupt):
-                clear_threads(active_player_indices)
+                clear_threads()
                 return False
             if game.players[player_ix].checks:
                 action_queue.task_done()
@@ -132,7 +136,7 @@ def main_loop():
                         print(game.field, '\n')
                     action_queue.task_done()
                     if game.is_winner(player_ix):
-                        cleared = clear_threads(active_player_indices)
+                        cleared = clear_threads()
                         if player_ix < first_attacker_ix:
                             first_attacker_ix -= 1
                         elif first_attacker_ix == game.player_count - 1:
@@ -149,7 +153,7 @@ def main_loop():
                 to_defend, card = make_card(action)
                 game.defend(to_defend, card)
             elif action[0] == 2:
-                cleared = clear_threads(active_player_indices)
+                cleared = clear_threads()
                 game.push([make_card(action)])
                 action_queue.task_done()
                 if game.is_winner(player_ix):
@@ -171,7 +175,7 @@ def main_loop():
                 print(game.field, '\n')
             action_queue.task_done()
             if game.is_winner(player_ix):
-                cleared = clear_threads(active_player_indices)
+                cleared = clear_threads()
                 if player_ix < first_attacker_ix:
                     first_attacker_ix -= 1
                 elif first_attacker_ix == game.player_count - 1:
@@ -185,8 +189,9 @@ def main_loop():
                 threads[active_player_indices.index(player_ix)].event.set()
         # attack ended
         if not cleared:
-            clear_threads(active_player_indices)
-        end_turn(first_attacker_ix)
+            clear_threads()
+        rest_rewards = end_turn(first_attacker_ix)
+        rewards[np.where(rewards == 1)] = rest_rewards # TODO maybe?
     return True
 
 
@@ -196,30 +201,33 @@ def spawn_threads():
 
     False is for a flag showing whether the threads have been cleared.
     """
-    global game, threads
+    global threads
     active_player_indices = game.active_player_indices()
-    threads = [None] * len(active_player_indices)
-    for thread_ix, player_ix in enumerate(active_player_indices):
-        if verbose:
-            print(player_ix, deck.cards_to_string(game.players[player_ix].cards))
-        thread = ActionReceiver(player_ix)
-        thread.start()
-        threads[thread_ix] = thread
+    threads = [spawn_thread(player_ix) for player_ix in active_player_indices]
     return active_player_indices, False
 
 
-def clear_threads(active_player_indices):
+def spawn_thread(player_ix):
+    """Spawn a thread for the given player index."""
+    if verbose:
+        print(player_ix, deck.cards_to_string(game.players[player_ix].cards))
+    thread = ActionReceiver(player_ix)
+    thread.start()
+    return thread
+
+
+def clear_threads():
     """Responsibly clear the list of threads and the action queue.
 
     Return true for a flag showing whether the threads have
     been cleared.
     """
     global game, threads, action_queue
-    for thread_ix, player_ix in enumerate(active_player_indices):
-        game.check(player_ix)
-        threads[thread_ix].event.set()
-        threads[thread_ix].join()
-        game.uncheck(player_ix)
+    for thread in threads:
+        game.check(thread.player_ix)
+        thread.event.set()
+        thread.join()
+        game.uncheck(thread.player_ix)
     threads.clear()
     while not action_queue.empty():
         try:
@@ -243,13 +251,13 @@ def store_experience(experience):
 
 
 def end_turn(first_attacker_ix):
-    """End a turn by drawing cards for all attackers and
-    the defender.
+    """End a turn by drawing cards for all attackers and the defender
+    and return reward(s).
     """
     global game
     if only_ais:
         rewards = np.zeros(game.player_count)
-    elif game.kraudia_ix >= 0:
+    else:
         rewards = 0
     if first_attacker_ix == game.defender_ix:
         first_attacker_ix += 1
@@ -258,10 +266,20 @@ def end_turn(first_attacker_ix):
     while first_attacker_ix != game.defender_ix:
         # first attacker till last attacker, then defender
         if game.is_winner(first_attacker_ix):
-            if first_attacker_ix == game.player_count - 1:
-                first_attacker_ix = 0
+            # TODO reward for winner
+            if only_ais:
+                rewards[first_attacker_ix] = 100
+            elif first_attacker_ix == game.kraudia_ix:
+                rewards = 100
             if game.remove_player(first_attacker_ix):
-                return
+                if only_ais:
+                    rewards[game.defender_ix] = -100
+                elif (first_attacker_ix != game.kraudia_ix
+                        and game.kraudia_ix >= 0):
+                    rewards = -100
+                return rewards
+            elif first_attacker_ix == game.player_count:
+                first_attacker_ix = 0
         else:
             game.draw(first_attacker_ix)
             first_attacker_ix += 1
@@ -272,16 +290,29 @@ def end_turn(first_attacker_ix):
     else:
         game.draw(first_attacker_ix + 1)
     if game.field.attack_cards:
-        if (only_ais or game.defender_ix == game.kraudia_ix
-                and game.kraudia_ix >= 0):
-            rewards[game.defender_ix] -= game.take()
+        amount = game.take()
+        if only_ais:
+            rewards[game.defender_ix] = -amount
+        elif game.defender_ix == game.kraudia_ix:
+            rewards = -amount
     else:
-        game.field.clear()
+        game.clear_field()
         if game.is_winner(first_attacker_ix):
+            if only_ais:
+                rewards[first_attacker_ix] = 100
+            elif first_attacker_ix == game.kraudia_ix:
+                rewards = 100
             game.remove_player(first_attacker_ix)
+            if game.ended():
+                if only_ais:
+                    rewards[np.where(rewards == 0)] = -100
+                elif (first_attacker_ix != game.kraudia_ix
+                        and game.kraudia_ix >= 0):
+                    rewards = -100
         else:
             game.draw(first_attacker_ix)
             game.update_defender()
+    return rewards
 
 
 class ActionReceiver(threading.Thread):
@@ -439,7 +470,7 @@ if __name__ == '__main__':
     game = None
     psi = None
     chi = None
-    threads = []
+    threads = None
     action_queue = queue.Queue(len(names) * 6)
     experiences = []
     experience_ix = 0
@@ -448,7 +479,7 @@ if __name__ == '__main__':
     model = learning.create_model()
     duration = clock() - start_time
 
-    print('Starting to play\n')
+    print('\nStarting to play\n')
     start_time = clock()
     main()
     duration = clock() - start_time

@@ -25,7 +25,6 @@ class Game:
         self.hand_size = hand_size
         self.only_ais = only_ais
         self.full_features = full_features
-        self.players = []
         self.kraudia_ix = -1
         self.player_count = len(names)
         assert self.player_count > 1 and self.player_count < 8, \
@@ -43,7 +42,6 @@ class Game:
             # 1 feature for deck size
             #   size of deck
             if self.only_ais:
-                self.indices_from = []
                 self.features = np.full((self.player_count, 55), -3)
                 self.features[:, self.deck.bottom_trump.index] = -4
                 self.features[:, 52] = -1
@@ -69,24 +67,31 @@ class Game:
             self.features[26] = -1
             self.features[27] = 0
             self.features[28] = self.deck.size
-        for ix, name in enumerate(names):
-            new_player = player_m.Player(name, self.deck.take(self.hand_size))
-            # update features
-            if self.only_ais:
-                for card in new_player.cards:
-                    self.features[ix, card.index] = 0
-                self.indices_from.append(self.calculate_indices_from(ix))
-            elif name == 'Kraudia' and self.kraudia_ix < 0:
-                self.kraudia_ix = ix
-                for card in new_player.cards:
-                    if full_features:
-                        self.features[card.index] = 0
-                    elif card.suit == self.deck.trump_suit:
-                        self.features[13 + card.num_value] = 0
-                self.indices_from_kraudia = self.calculate_indices_from()
-            self.players.append(new_player)
+        self.players = [self.init_player(ix, name)
+                for ix, name in enumerate(names)]
+        if self.only_ais:
+            self.indices_from = [self.calculate_indices_from(ix)
+                    for ix in range(self.player_count)]
+        else:
+            self.indices_from_kraudia = self.calculate_indices_from()
         self.field = field.Field()
         self.defender_ix = -1
+
+    def init_player(self, ix, name):
+        """Initialize a player with the given index and name."""
+        new_player = player_m.Player(name, self.deck.take(self.hand_size))
+        # update features
+        if self.only_ais:
+            for card in new_player.cards:
+                self.features[ix, card.index] = 0
+        elif name == 'Kraudia' and self.kraudia_ix < 0:
+            self.kraudia_ix = ix
+            for card in new_player.cards:
+                if self.full_features:
+                    self.features[card.index] = 0
+                elif card.suit == self.deck.trump_suit:
+                    self.features[13 + card.num_value] = 0
+        return new_player
 
     def find_beginner(self):
         """Return the index of the player with the lowest trump and
@@ -343,6 +348,22 @@ class Game:
                         self.features[13 + self.deck.bottom_trump.num_value] \
                                 = self.indices_from_kraudia[player_ix]
 
+    def clear_field(self):
+        """Clear the field from cards and update the features."""
+        cards = self.field.take()
+        # update features
+        if self.only_ais:
+            for card in cards:
+                self.features[:, card.index] = -2
+        elif self.kraudia_ix >= 0:
+            if self.full_features:
+                for card in cards:
+                    self.features[card.index] = -2
+            else:
+                # TODO optimizable
+                for card in cards:
+                    if card.suit == self.deck.trump_suit:
+                        self.features[13 + card.num_value] = -2
 
     def attack_ended(self):
         """Test whether an attack is over because the maximum allowed
@@ -570,13 +591,12 @@ class Game:
             return self.player_count == 1
         if self.only_ais:
             self.features = np.delete(self.features, player_ix, 0)
-            self.indices_from = []
-            for ix in range(self.player_count):
-                self.indices_from.append(self.calculate_indices_from(ix))
+            self.indices_from = [self.calculate_indices_from(ix)
+                    for ix in range(self.player_count)]
         elif self.kraudia_ix >= 0:
             self.indices_from_kraudia = self.calculate_indices_from()
-        return self.player_count == 1
+        return self.ended()
 
     def ended(self):
         """Return whether no player aside from one is left."""
-        return len(self.players) <= 1
+        return self.player_count <= 1

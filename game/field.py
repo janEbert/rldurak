@@ -43,8 +43,8 @@ class Field:
     def take(self):
         """Return all cards on the field and clear it."""
         to_take = self.attack_cards[:]
-        for (att_card, def_card) in self.defended_pairs:
-            to_take.extend([att_card, def_card])
+        to_take.extend(
+                [card for cards in self.defended_pairs for card in cards])
         self.clear()
         return to_take
 
