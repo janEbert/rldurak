@@ -16,6 +16,8 @@ hand_size = 6
 trump_suit = 2
 
 episodes = 10
+# how often a random action is taken
+epsilon = 0.1
 # how often random bots wait
 # calculated from a normal distribution with the given values
 psi_mu = 0.92
@@ -229,17 +231,6 @@ def end_turn(first_attacker_ix):
             game.update_defender()
 
 
-def make_card(action):
-    """Create a card from an action.
-
-    Create a tuple of two cards if action is defending.
-    """
-    if action[0] == 1:
-        return (deck.Card(action[3], action[4], numerical=True),
-                deck.Card(action[1], action[2], numerical=True))
-    return deck.Card(action[1], action[2], numerical=True)
-
-
 class ActionReceiver(threading.Thread):
     """Receive all actions for the given player for one round."""
 
@@ -253,65 +244,100 @@ class ActionReceiver(threading.Thread):
         """Add all actions for one round."""
         global game
         player = game.players[self.player_ix]
-        if False and self.player_ix == game.kraudia_ix:
-            while not player.checks and possible_actions:
-                possible_actions = game.get_actions(self.player_ix)
-                if (not game.defender_ix == self.player_ix
-                        and not (game.field.attack_cards
-                        and game.field.defended_pairs)
-                        or game.defender_ix == self.player_ix):
-                    # TODO receive action from neural net
-                    if action[0] != 4:
-                        possible_actions.remove(action)
-                else:
-                    add_action(self.player_ix, game.wait_action())
+        if self.player_ix == game.kraudia_ix:
+            # first attacker
+            if (self.player_ix == game.prev_neighbour(game.defender_ix)
+                    and game.field.is_empty()):
+                self.possible_actions = game.get_actions(self.player_ix)
+                self.add_selected_action()
+            else:
+                self.possible_actions = self.get_extended_actions()
+            # attacker
+            if game.defender_ix != self.player_ix
+                defender = game.players[game.defender_ix]
+                while self.possible_actions:
+                    # everything is defended
+                    if not game.field.attack_cards or defender.checks:
+                        self.add_selected_action()
+            # defender
+            else:
+                while self.possible_actions:
+                    self.add_selected_action()
+
         else:
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
                     and game.field.is_empty()):
                 self.possible_actions = game.get_actions(self.player_ix)
-                if len(self.possible_actions) == 1:
-                    action = self.possible_actions[0]
-                else:
-                    action = choice(self.possible_actions)
-                add_action(self.player_ix, action)
+                self.add_action(choice(self.possible_actions))
             self.possible_actions = self.get_actions()
             # attacker
             if game.defender_ix != self.player_ix:
                 defender = game.players[game.defender_ix]
-                while not player.checks and self.possible_actions:
+                while self.possible_actions:
                     # everything is defended
                     if ((not game.field.attack_cards or defender.checks)
                             and np.random.random() > psi):
                         self.add_random_action()
             # defender
             else:
-                while not player.checks and self.possible_actions:
+                while self.possible_actions:
                     if np.random.random() > psi:
                         self.add_random_action()
-            if not player.checks:
-                add_action(self.player_ix, game.check_action())
+        if not player.checks:
+            self.add_action(game.check_action())
+
+    def get_extended_actions(self):
+        """Wait until the game is updated and return a list of possible
+        actions including checking and waiting.
+
+        If the wait time is exceeded, return an empty list.
+        """
+        if not self.event.wait(2):
+            return []
+        self.event.clear()
+        return game.get_actions(self.player_ix) + [game.check_action(),
+                game.wait_action()]
 
     def get_actions(self):
+        """Wait until the game is updated and return a list of possible
+        actions.
+
+        If the wait time is exceeded, return an empty list.
+        """
         if not self.event.wait(2):
             return []
         self.event.clear()
         return game.get_actions(self.player_ix)
 
+    def add_action(self, action):
+        """Add an action with the belonging player's index to the
+        action queue.
+        """
+        global action_queue
+        action_queue.put((self.player_ix, action))
+
+    def add_selected_action(self):
+        if np.random.random() > epsilon:
+            # TODO receive action from neural net
+        else:
+            action = choice(self.possible_actions)
+            self.add_action(action)
+        # TODO store experience
+        self.possible_actions = self.get_extended_actions()
+
     def add_random_action(self):
+        """Add a random action to the action queue or check at random.
+        
+        Also update the possible actions.
+        """
         if np.random.random() > chi:
-            add_action(self.player_ix, choice(self.possible_actions))
+            self.add_action(choice(self.possible_actions))
             self.possible_actions = self.get_actions()
         else:
-            add_action(self.player_ix, game.check_action())
+            self.add_action(game.check_action())
             if not self.event.wait(2):
                 self.possible_actions = []
-
-
-def add_action(player_ix, action):
-    """Add an action with the belonging player to the action queue."""
-    global action_queue
-    action_queue.put((player_ix, action))
 
 
 def action_to_string(player_ix, action):
@@ -329,6 +355,17 @@ def action_to_string(player_ix, action):
         return string
     else:
         return str(player_ix) + ': Chk'
+
+
+def make_card(action):
+    """Create a card from an action.
+
+    Create a tuple of two cards if action is defending.
+    """
+    if action[0] == 1:
+        return (deck.Card(action[3], action[4], numerical=True),
+                deck.Card(action[1], action[2], numerical=True))
+    return deck.Card(action[1], action[2], numerical=True)
 
 
 if __name__ == '__main__':

@@ -325,6 +325,8 @@ class Game:
         actions = []
         player = self.players[player_ix]
         pushed = 0
+        if player.checks:
+            return []
         if player_ix == self.defender_ix:
             # actions as defender
             for to_defend in self.field.attack_cards:
