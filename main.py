@@ -221,7 +221,9 @@ def main_loop():
         # attack ended
         if not cleared:
             clear_threads()
-        end_turn(first_attacker_ix, experience_list)
+        experience_list = end_turn(first_attacker_ix, experience_list)
+        assert not experience_list, 'An experience has not been completed'
+        train_from_memory()
     return True
 
 
@@ -373,8 +375,8 @@ def end_turn(first_attacker_ix, experience_list):
                         first_attacker_ix, 100)
             update_experience_list_indices(first_attacker_ix)
             if game.remove_player(first_attacker_ix):
-                if only_ais or first_attacker_ix != game.kraudia_ix
-                        and game.kraudia_ix >= 0:
+                if (only_ais or first_attacker_ix != game.kraudia_ix
+                        and game.kraudia_ix >= 0):
                     experience_list = complete_experience(experience_list,
                             1 - first_attacker_ix, -100)
                 return [exp for (exp, ix) in experience_list] # TODO remove
@@ -403,8 +405,8 @@ def end_turn(first_attacker_ix, experience_list):
                         first_attacker_ix, 100)
             update_experience_list_indices(first_attacker_ix)
             if game.remove_player(first_attacker_ix):
-                if only_ais or first_attacker_ix != game.kraudia_ix
-                        and game.kraudia_ix >= 0:
+                if (only_ais or first_attacker_ix != game.kraudia_ix
+                        and game.kraudia_ix >= 0):
                     experience_list = complete_experience(experience_list,
                             1 - first_attacker_ix, -100)
         else:
@@ -428,7 +430,7 @@ class ActionReceiver(threading.Thread):
         global game
         player = game.players[self.player_ix]
         # TODO remove false
-        if False and (only_ais or self.player_ix == game.kraudia_ix):
+        if only_ais or self.player_ix == game.kraudia_ix:
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
                     and game.field.is_empty()):

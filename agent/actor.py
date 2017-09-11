@@ -48,8 +48,8 @@ class Actor:
         """Train the target model."""
         weights = self.model.get_weights()
         target_weights = self.model.get_weights()
-        target_weights = self.tau * actor_weights
-                + (1 - self.tau) * target_weights
+        target_weights = (self.tau * actor_weights
+                + (1 - self.tau) * target_weights)
         self.target_model.set_weights(target_weights)
 
     def save_weights(self, file_name='actor.h5'):
