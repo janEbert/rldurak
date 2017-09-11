@@ -1,4 +1,5 @@
 from itertools import chain
+from threading import Lock
 
 import numpy as np
 
@@ -26,6 +27,7 @@ class Game:
         self.only_ais = only_ais
         self.full_features = full_features
         self.kraudia_ix = -1
+        self.feature_lock = Lock()
         self.player_count = len(names)
         assert self.player_count > 1 and self.player_count < 8, \
                 'Player count does not make sense'
@@ -139,12 +141,16 @@ class Game:
         self.field.attack(cards)
         # update features
         if self.only_ais:
+            self.feature_lock.acquire()
             for card in cards:
                 self.features[:, card.index] = -1
+            self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.full_features:
+                self.feature_lock.acquire()
                 for card in cards:
                     self.features[card.index] = -1
+                self.feature_lock.release()
             else:
                 for card in cards:
                     if card.suit == self.deck.trump_suit:
@@ -170,10 +176,14 @@ class Game:
         self.field.defend(to_defend, card)
         # update features
         if self.only_ais:
+            self.feature_lock.acquire()
             self.features[:, card.index] = -1
+            self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.full_features:
+                self.feature_lock.acquire()
                 self.features[card.index] = -1
+                self.feature_lock.release()
             else:
                 # TODO optimizable
                 if card.suit == self.deck.trump_suit:
@@ -194,12 +204,16 @@ class Game:
         self.field.push(cards)
         # update features
         if self.only_ais:
+            self.feature_lock.acquire()
             for card in cards:
                 self.features[:, card.index] = -1
+            self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.full_features:
+                self.feature_lock.acquire()
                 for card in cards:
                     self.features[card.index] = -1
+                self.feature_lock.release()
             else:
                 # TODO optimizable
                 for card in cards:
@@ -220,6 +234,7 @@ class Game:
         # update undefended suit feature
         # TODO still rudimentary
         if self.only_ais:
+            self.feature_lock.acquire()
             self.features[self.prev_neighbour(self.defender_ix), 52] = \
                     self.field.attack_cards[0].num_suit
             if len(self.field.attack_cards) > 1:
@@ -231,10 +246,13 @@ class Game:
                         self.features[self.prev_neighbour(self.defender_ix),
                                 52] = attack_card.num_suit
                         break            
+            self.feature_lock.release()
         elif self.defender_ix == self.next_neighbour() and self.kraudia_ix >= 0:
             if self.full_features:
+                self.feature_lock.acquire()
                 self.features[52] = self.field.attack_cards[0].num_suit
             else:
+                self.feature_lock.acquire()
                 self.features[26] = self.field.attack_cards[0].num_suit
             if len(self.field.attack_cards) > 1:
                 attack_suits = [card.suit for card in self.field.attack_cards]
@@ -247,19 +265,24 @@ class Game:
                         else:
                             self.features[26] = attack_card.num_suit
                         break
+            self.feature_lock.release()
         cards = self.field.take()
         self.players[self.defender_ix].take(cards)
         # update features
         if self.only_ais:
+            self.feature_lock.acquire()
             for ix in range(self.player_count):
                 for card in cards:
                     self.features[ix, card.index] = self.indices_from[ix,
                             self.defender_ix]
+            self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.full_features:
+                self.feature_lock.acquire()
                 for card in cards:
                     self.features[card.index] = self.indices_from_kraudia[
                             self.defender_ix]
+                self.feature_lock.release()
             else:
                 # TODO optimizable
                 for card in cards:
@@ -283,10 +306,14 @@ class Game:
         if player_ix == self.defender_ix:
             # update features
             if self.only_ais:
+                self.feature_lock.acquire()
                 self.features[:, 53] = 1
+                self.feature_lock.release()
             elif self.kraudia_ix >= 0:
                 if self.full_features:
+                    self.feature_lock.acquire()
                     self.features[53] = 1
+                    self.feature_lock.release()
                 else:
                     self.features[27] = 1
 
@@ -301,10 +328,14 @@ class Game:
         if player_ix == self.defender_ix:
             # update features
             if self.only_ais:
+                self.feature_lock.acquire()
                 self.features[:, 53] = 0
+                self.feature_lock.release()
             elif self.kraudia_ix >= 0:
                 if self.full_features:
+                    self.feature_lock.acquire()
                     self.features[53] = 0
+                    self.feature_lock.release()
                 else:
                     self.features[27] = 0
 
@@ -320,6 +351,7 @@ class Game:
             player.take(cards)
             # update features
             if self.only_ais:
+                self.feature_lock.acquire()
                 self.features[:, 54] = self.deck.size
                 for card in cards:
                     self.features[player_ix, card.index] = 0
@@ -327,10 +359,13 @@ class Game:
                     for ix in range(self.player_count):
                         self.features[:, self.deck.bottom_trump.index] = \
                                 self.indices_from[ix, player_ix]
+                self.feature_lock.release()
             elif self.kraudia_ix >= 0:
                 if self.full_features:
+                    self.feature_lock.acquire()
                     self.features[54] = self.deck.size
                 else:
+                    self.feature_lock.acquire()
                     self.features[28] = self.deck.size
                 if player_ix == self.kraudia_ix:
                     if self.full_features:
@@ -347,18 +382,23 @@ class Game:
                     else:
                         self.features[13 + self.deck.bottom_trump.num_value] \
                                 = self.indices_from_kraudia[player_ix]
+                self.feature_lock.release()
 
     def clear_field(self):
         """Clear the field from cards and update the features."""
         cards = self.field.take()
         # update features
         if self.only_ais:
+            self.feature_lock.acquire()
             for card in cards:
                 self.features[:, card.index] = -2
+            self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.full_features:
+                self.feature_lock.acquire()
                 for card in cards:
                     self.features[card.index] = -2
+                self.feature_lock.release()
             else:
                 # TODO optimizable
                 for card in cards:
@@ -592,7 +632,9 @@ class Game:
             self.kraudia_ix = -1
             return self.ended()
         if self.only_ais:
+            self.feature_lock.acquire()
             self.features = np.delete(self.features, player_ix, 0)
+            self.feature_lock.release()
             self.indices_from = [self.calculate_indices_from(ix)
                     for ix in range(self.player_count)]
         elif self.kraudia_ix >= 0:

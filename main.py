@@ -121,17 +121,12 @@ def main_loop():
     """
     global game, threads, action_queue, epsilon
     player_ix = -1
-    state = game.features
-    action = ()
-    old_state = state.copy()
     while not game.ended():
         active_player_indices, cleared = spawn_threads()
         first_attacker_ix = active_player_indices[0]
         while not game.attack_ended():
             if epsilon >= min_epsilon:
                 epsilon -= epsilon_step
-            # TODO reward if player_ix == game.kraudia_ix
-            # and observe new state (or in thread)
             try:
                 player_ix, action = action_queue.get(timeout=2)
             except (queue.Empty, KeyboardInterrupt):
@@ -470,7 +465,9 @@ class ActionReceiver(threading.Thread):
         if not self.event.wait(2.0):
             return []
         self.event.clear()
+        game.feature_lock.acquire()
         self.state = game.features.copy()
+        game.feature_lock.release()
         return game.get_actions(self.player_ix)
 
     def add_action(self, action):
@@ -504,7 +501,12 @@ class ActionReceiver(threading.Thread):
             action = choice(self.possible_actions)
             self.add_action(action)
         self.possible_actions = self.get_extended_actions()
-        store_experience((self.state, action, self.reward, game.features))
+        if reward != 1:
+            game.feature_lock.acquire()
+            store_experience((self.state, action, self.reward, game.features))
+            game.feature_lock.release()
+        else:
+            print('{0} received a reward of one!'.format(self.player_ix))
         self.reward = 1
 
     def add_random_action(self):
