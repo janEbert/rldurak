@@ -2,7 +2,6 @@ import keras.backend as K
 from keras.layers import Input, Dense
 from keras.layers.merge import concatenate
 from keras.models import Model
-from keras.optimizers import Adam, RMSprop, SGD
 import tensorflow as tf
 
 
@@ -25,11 +24,18 @@ class Actor:
         self.state_shape = 55
         self.action_shape = 5
         K.set_session(sess)
-        self.model = self.create_model()
-        self.target_model = self.create_model()
+        self.model, self.inputs, weights = self.create_model()
+        self.target_model = self.create_model()[0]
+        self.action_gradients = tf.placeholder(tf.float32,
+                [None, self.action_shape])
+        parameter_gradients = tf.gradients(self.model.output, weights,
+                -self.action_gradients)
+        gradients = zip(parameter_gradients, weights)
+        self.optimizer = tf.train.AdamOptimizer(
+                self.alpha).apply_gradients(gradients)
+        self.sess.run(tf.global_variables_initializer())
         if load:
             self.load_weights()
-        self.sess.run(tf.initialize_all_variables())
 
     def create_model(self):
         """Return a compiled model."""
@@ -39,17 +45,22 @@ class Actor:
         outputs = Dense(self.action_shape)(x)
 
         model = Model(inputs=inputs, outputs=outputs)
-        model.compile(optimizer=Adam(lr=self.alpha), loss='mse')
-        # model.compile(optimizer=RMSprop(lr=0.1), loss='mse')
-        # model.compile(optimizer=SGD(lr=0.1), loss='mse')
-        return model
+        return model, inputs, model.trainable_weights
+
+    def train(self, states, gradients):
+        """Train the model on the given states and the given gradients
+        provided by the critic.
+        """
+        self.sess.run(self.optimizer, feed_dict={self.inputs: states,
+                self.action_gradients: gradients})
 
     def train_target(self):
         """Train the target model."""
         weights = self.model.get_weights()
-        target_weights = self.model.get_weights()
-        target_weights = (self.tau * actor_weights
-                + (1 - self.tau) * target_weights)
+        target_weights = self.target_model.get_weights()
+        for i in range(len(weights)):
+            target_weights[i] = self.tau * weights[i] \
+                    + (1 - self.tau) * target_weights[i]
         self.target_model.set_weights(target_weights)
 
     def save_weights(self, file_name='actor.h5'):

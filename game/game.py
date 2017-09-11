@@ -524,10 +524,11 @@ class Game:
         return (4, -1, -1, -1, -1)
 
     def active_player_indices(self):
-        """Return the indices of both attackers and the defender.
+        """Return a list of the indices of both attackers and
+        the defender.
 
-        Return the indices of the attacker and defender if only two
-        players are left.
+        Return a list of the indices of the attacker and defender if
+        only two players are left.
         """
         if len(self.players) > 2:
             return [self.prev_neighbour(self.defender_ix), self.defender_ix,
@@ -583,7 +584,7 @@ class Game:
         return (player_ix - from_ix) % self.player_count
 
     def calculate_indices_from(self, player_ix=None):
-        """Calculate a list of indices expressing how far away those
+        """Return a list of indices expressing how far away those
         players are from the given player index.
 
         If no index is given, use Kraudia's.

@@ -26,15 +26,17 @@ class Critic:
         self.action_shape = 5
         K.set_session(sess)
         self.model, self.state_input, self.action_input = self.create_model()
-        self.target_model = self.create_model()
+        self.target_model = self.create_model()[0]
         self.action_gradients = K.gradients(self.model.output,
                 self.action_input)
+        self.sess.run(tf.global_variables_initializer())
         if load:
             self.load_weights()
-        self.sess.run(tf.initialize_all_variables())
 
     def create_model(self):
-        """Return a compiled model."""
+        """Return a compiled model and the state and action
+        input layers.
+        """
         inputs = Input(shape=(self.state_shape,))
         action_input = Input(shape=(self.action_shape,))
         x1 = Dense(self.n1, activation='relu')(inputs)
@@ -50,15 +52,17 @@ class Critic:
         return model, inputs, action_input
 
     def get_gradients(self, states, actions):
+        """Return the gradients for the given states and actions."""
         return self.sess.run(self.action_gradients, feed_dict={
                 self.state_input: states, self.action_input: actions})[0]
 
     def train_target(self):
         """Train the target model."""
         weights = self.model.get_weights()
-        target_weights = self.model.get_weights()
-        target_weights = (self.tau * actor_weights
-                + (1 - self.tau) * target_weights)
+        target_weights = self.target_model.get_weights()
+        for i in range(len(weights)):
+            target_weights[i] = self.tau * weights[i] \
+                    + (1 - self.tau) * target_weights[i]
         self.target_model.set_weights(target_weights)
 
     def save_weights(self, file_name='critic.h5'):
