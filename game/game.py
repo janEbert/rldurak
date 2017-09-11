@@ -599,6 +599,10 @@ class Game:
             self.indices_from_kraudia = self.calculate_indices_from()
         return self.ended()
 
+    def will_end(self):
+        """Return whether two or less players are left."""
+        return self.player_count <= 2
+
     def ended(self):
         """Return whether no player aside from one is left."""
         return self.player_count <= 1
