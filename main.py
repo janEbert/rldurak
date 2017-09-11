@@ -28,7 +28,7 @@ n1_actor = 100
 n1_critic = 100
 n2_actor = 150
 n2_critic = 150
-verbose = False # whether to print game progress
+verbose = True # whether to print game progress
 episodes = 1
 gamma = 0.99 # discount factor
 max_experience_count = 300 # amount of experiences to store
@@ -429,7 +429,6 @@ class ActionReceiver(threading.Thread):
         """Add all actions for one round."""
         global game
         player = game.players[self.player_ix]
-        # TODO remove false
         if only_ais or self.player_ix == game.kraudia_ix:
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
@@ -449,7 +448,6 @@ class ActionReceiver(threading.Thread):
             else:
                 while not player.checks and self.possible_actions:
                     self.add_selected_action()
-
         else:
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)

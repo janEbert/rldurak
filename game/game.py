@@ -622,7 +622,7 @@ class Game:
         player = self.players[player_ix]
         self.players.remove(player)
         self.player_count -= 1
-        if player_ix < self.defender_ix
+        if player_ix < self.defender_ix:
             self.defender_ix -= 1
         elif self.defender_ix == self.player_count:
             self.defender_ix = 0
