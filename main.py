@@ -20,7 +20,8 @@ only_ais = False
 
 verbose = False # whether to print game progress
 episodes = 1
-gamma = 0.99
+gamma = 0.99 # discount factor
+minibatch_size = 32
 # starting value for how often a random action is taken by AIs
 # linearly anneals 0.1 in the first 3000 episodes
 epsilon = 1
