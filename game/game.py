@@ -582,13 +582,15 @@ class Game:
         player = self.players[player_ix]
         self.players.remove(player)
         self.player_count -= 1
-        if self.defender_ix == self.player_count:
+        if player_ix < self.defender_ix
+            self.defender_ix -= 1
+        elif self.defender_ix == self.player_count:
             self.defender_ix = 0
         if player_ix < self.kraudia_ix:
             self.kraudia_ix -= 1
         elif player_ix == self.kraudia_ix:
             self.kraudia_ix = -1
-            return self.player_count == 1
+            return self.ended()
         if self.only_ais:
             self.features = np.delete(self.features, player_ix, 0)
             self.indices_from = [self.calculate_indices_from(ix)

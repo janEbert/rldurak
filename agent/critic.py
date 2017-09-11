@@ -9,7 +9,9 @@ import tensorflow as tf
 class Critic:
     """A critic model evaluating an action in a given state."""
 
-    def __init__(self, sess, alpha=0.001, tau=0.001, n1=100, n2=150):
+    def __init__(
+            self, sess, load=True, alpha=0.001,
+            tau=0.001, n1=100, n2=150):
         """Initialize a critic with the given session, learning rate,
         update factor and neurons in the hidden layers.
 
