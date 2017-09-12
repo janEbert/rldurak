@@ -142,14 +142,17 @@ def main_loop():
         while not game.attack_ended():
             if epsilon >= min_epsilon:
                 epsilon -= epsilon_step
-            game.feature_lock.acquire()
-            state = game.features.copy()
-            game.feature_lock.release()
             try:
                 player_ix, action = action_queue.get(timeout=10)
             except queue.Empty:
                 clear_threads()
                 return False
+            game.feature_lock.acquire()
+            if only_ais:
+                state = game.features[player_ix].copy()
+            else:
+                state = game.features.copy()
+            game.feature_lock.release()
             if game.players[player_ix].checks or action[0] == 4:
                 action_queue.task_done()
                 if action[0] == 4:
@@ -309,7 +312,12 @@ def complete_experience(experience_list, player_ix, reward):
     for i, item in enumerate(experience_list):
         if item[1] == player_ix:
             exp = item[0]
-            store_experience((exp[0], exp[1], reward, game.features))
+            if only_ais:
+                store_experience((exp[0], exp[1], reward,
+                        game.features[player_ix]))
+            else:
+                store_experience((exp[0], exp[1], reward,
+                        game.features))
             pop_ix = i
             break
     assert pop_ix >= 0, 'Player index not found in experience list'
@@ -471,7 +479,10 @@ class ActionReceiver(threading.Thread):
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
                     and game.field.is_empty()):
                 game.feature_lock.acquire()
-                self.state = game.features.copy()
+                if only_ais:
+                    self.state = game.features[self.player_ix].copy()
+                else:
+                    self.state = game.features.copy()
                 game.feature_lock.release()
                 self.possible_actions = game.get_actions(self.player_ix)
                 self.add_selected_action()
@@ -520,7 +531,10 @@ class ActionReceiver(threading.Thread):
             self.possible_actions = []
         self.event.clear()
         game.feature_lock.acquire()
-        self.state = game.features.copy()
+        if only_ais:
+            self.state = game.features[self.player_ix].copy()
+        else:
+            self.state = game.features.copy()
         game.feature_lock.release()
         self.possible_actions = game.get_actions(self.player_ix) \
                 + [game.check_action(), game.wait_action()]
@@ -550,8 +564,8 @@ class ActionReceiver(threading.Thread):
         Also update the possible actions and store the experience.
         """
         if np.random.random() > epsilon:
-            action = [int(v)
-                    for v in actor.model.predict(self.state.reshape(1, 55))[0]]
+            action = [int(v) for v in actor.model.predict(
+                    self.state.reshape(1, self.state.shape[0]))[0]]
             # TODO maybe remove?
             if action[0] in [0, 2, 3, 4]:
                 action[3] = -1
@@ -571,8 +585,12 @@ class ActionReceiver(threading.Thread):
         self.get_extended_actions()
         if reward != 1:
             game.feature_lock.acquire()
-            store_experience((self.state, action, self.reward,
-                    game.features))
+            if only_ais:
+                store_experience((self.state, action, self.reward,
+                        game.features[self.player_ix]))
+            else:
+                store_experience((self.state, action, self.reward,
+                        game.features))
             game.feature_lock.release()
         self.reward = 1
 
