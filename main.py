@@ -20,6 +20,7 @@ episodes = 10
 only_ais = False
 load = False # whether to load the models' weights
 verbose = True # whether to print game progress
+feature_type = 1 # 1, 2 or (unsupported) 3
 # starting value for how often a random action is taken by AIs
 # linearly anneals min_epsilon in the first epsilon_count actions
 min_epsilon = 0.1
@@ -37,7 +38,7 @@ n1_critic = 100
 n2_actor = 150
 n2_critic = 150
 gamma = 0.99 # discount factor
-max_experience_count = 300 # amount of experiences to store
+max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
 # how often random bots wait
 # calculated from a normal distribution with the given values
@@ -47,6 +48,7 @@ psi_sigma = 0.1
 # calculated from a normal distribution with the given values
 chi_mu = 0.08
 chi_sigma = 0.1
+action_shape = 5
 
 names = ['Alice', 'Bob']
 deck_size = 52 # cannot be changed at the moment
@@ -650,9 +652,9 @@ def make_card(action):
     Create a tuple of two cards if action is defending.
     """
     if action[0] == 1:
-        return (deck.Card(action[3], action[4], numerical=True),
-                deck.Card(action[1], action[2], numerical=True))
-    return deck.Card(action[1], action[2], numerical=True)
+        return (deck.Card(action[3], action[4]),
+                deck.Card(action[1], action[2]))
+    return deck.Card(action[1], action[2])
 
 
 if __name__ == '__main__':
@@ -663,6 +665,12 @@ if __name__ == '__main__':
         plural_s = ''
     else:
         plural_s = 's'
+    if feature_type == 1:
+        state_shape = deck_size + 3
+    elif feature_type == 2:
+        state_shape = 0# TODO
+    else:
+        state_shape = 29
     durak_ix = -1
     game = None
     psi = None
@@ -677,10 +685,10 @@ if __name__ == '__main__':
 
     sess = tf.Session(config=tf.ConfigProto())
     K.set_session(sess)
-    actor = actor_m.Actor(sess, load, alpha_actor, tau_actor, n1_actor,
-            n2_actor)
-    critic = critic_m.Critic(sess, load, alpha_critic, tau_critic, n1_critic,
-            n2_critic)
+    actor = actor_m.Actor(sess, state_shape, action_shape, load,
+            alpha_actor, tau_actor, n1_actor, n2_actor)
+    critic = critic_m.Critic(sess, state_shape, action_shape, load,
+            alpha_critic, tau_critic, n1_critic, n2_critic)
 
     print('\nStarting to play\n')
     start_time = clock()

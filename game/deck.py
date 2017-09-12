@@ -45,8 +45,10 @@ def cards_to_string(cards, numerical=False):
 class Card:
     """A standard playing card with value and suit."""
 
-    def __init__(self, value, suit, numerical=False):
-        """Construct a card via readable or numerical value or suit."""
+    def __init__(self, value, suit, index, numerical=True):
+        """Construct a card via readable or numerical value or suit
+        with the given index in the feature vector.
+        """
         if not numerical:
             assert value in values and suit in suits, \
                     'Value or suit is not valid'
@@ -61,8 +63,7 @@ class Card:
             self.suit = suits[suit]
             self.num_value = value
             self.num_suit = suit
-        # index in full feature vector
-        self.index = self.num_value + self.num_suit * 13
+        self.index = index
 
     def __eq__(self, other):
         return self.value == other.value and self.suit == other.suit
@@ -86,6 +87,10 @@ class Deck:
         assert size >= 20 and size <= 104 and size % 4 == 0, \
                 'Size does not make sense'
         self.size = size
+        if size <= 52:
+            self.cards_per_suit = size // 4
+        else:
+            self.cards_per_suit = size // 8
         self.fill()
         if trump_suit is not None:
             assert trump_suit in suits or trump_suit in range(4), \
@@ -106,11 +111,13 @@ class Deck:
         If size is greater than 52, add duplicate cards.
         """
         if self.size <= 52:
-            self.cards = [Card(value, suit) for value in values
-                    for suit in suits][52 - self.size:]
+            self.cards = [Card(num_value, num_suit, num_value + num_suit
+                    * self.cards_per_suit) for num_value in range(13)
+                    for num_suit in range(4)][52 - self.size:]
         else:
-            self.cards = [Card(value, suit) for value in values
-                    for suit in suits][52 - self.size / 2:]
+            self.cards = [Card(num_value, num_suit, num_value + num_suit
+                    * self.cards_per_suit) for num_value in range(13)
+                    for num_suit in range(4)][52 - self.size / 2:]
             self.cards = self.cards + self.cards[:]
 
     def shuffle(self):

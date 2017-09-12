@@ -1,6 +1,5 @@
 import keras.backend as K
 from keras.layers import Input, Dense
-from keras.layers.merge import concatenate
 from keras.models import Model
 import tensorflow as tf
 
@@ -9,20 +8,20 @@ class Actor:
     """An actor model selecting an action for a given state."""
 
     def __init__(
-            self, sess, load=True, alpha=0.001,
-            tau=0.001, n1=100, n2=150):
+            self, sess, state_shape, action_shape, load=True,
+            alpha=0.001, tau=0.001, n1=100, n2=150):
         """Construct an actor with the given session, learning rate,
         update factor and neurons in the hidden layers.
 
         If load is true, load the model instead of creating a new one.
         """
         self.sess = sess
+        self.state_shape = state_shape
+        self.action_shape = action_shape
         self.alpha = alpha
         self.tau = tau
         self.n1 = n1
         self.n2 = n2
-        self.state_shape = 55
-        self.action_shape = 5
         K.set_session(sess)
         self.model, self.inputs, weights = self.create_model()
         self.target_model = self.create_model()[0]
