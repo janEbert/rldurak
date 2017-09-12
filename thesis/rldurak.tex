@@ -20,22 +20,24 @@
 \DeclareMathOperator{\argmax}{arg\,max}
 \DeclareMathOperator{\argmin}{arg\,min}
 
-\title{Reinforcement Learning for Durak}
+\title{Reinforcement Learning for Durak \\ \medskip \large{Bachelor's Thesis on Reinforcement Learning}}
 %\subtitle{Bachelor's Thesis on Reinforcement Learning}
-\author{Jan Ebert}
+\author{Jan Ebert \\  \\ \small{Cognitive Informatics} \\ \small{Faculty of Technology}}
 \date{\today}
 
 \begin{document}
 
 \maketitle
 
-\begin{abstract}
+\noindent
+This thesis has been written solely by myself, Jan Ebert. All sources have been referenced.
 
+\begin{abstract}
 Reinforcement learning -- and machine learning in general -- is one of the most progressive scientific fields in present time. Learning like a human by trial and error is fascinatingly useful and can have big influences on a lot of very different subjects. Because computers are much faster at calculating than a human and can concentrate solely on the problem at hand, not needing time to, for example, do the dishes, they can find correlations that even experts of certain topics have not discovered yet; simply by magnitude of observations.
 
 However, reinforcement learning is also not easy. To try and understand reinforcement learning, I model the Russian card game durak and let an agent learn it. It does that by first playing against players that only execute random actions and then, when it has learned enough to understand the basics of the game, by playing and improving against itself. I want to solve the game without explicitly modeling it by calculations of probabilities. The agent simply plays the game and learns to find regularities and an optimal strategy without further interaction from my side.
 
-Durak is an interesting game for this task for many reasons: First of all, it has many variables. In durak, the amount of cards in the deck, amount of cards in hand or even amount of players can vary. The amount of players in the game varies even while playing. Winners are removed from the game while the others continue to compete. It is a competitive multi-agent game with limited information up until the end when the players have perfect information. In each game state, there are a lot of very different actions. Each decision might end up changing the end result of the game.
+Durak is an interesting game for this task for many reasons: First of all, it has many variables. In durak, the amount of cards in the deck, amount of cards in hand or even amount of players can vary. The amount of players in the game varies even while playing: Winners are removed from the game while the others continue to compete. It is a competitive multi-agent game with limited information up until the end when the remaining players have perfect information. In each game state, there are a lot of very different actions. Each decision might end up changing the end result of the game.
 
 In short, I apply what I have not learned to what I \emph{have} learned during my time in university -- durak.
 
@@ -47,12 +49,12 @@ In short, I apply what I have not learned to what I \emph{have} learned during m
 
 \section{Durak}
 
-Durak, like most older card games, can have a lot of variations, starting with the number of cards and subsequently players. A standard 52-card deck is used to play. The classic Russian version is played with 36 cards by removing the cards 2 to 5 of every suit.
+Durak, like most older card games, can have a lot of variations, starting with the number of cards and players. A standard 52-card deck is used to play. The classic Russian version is played with 36 cards by removing the cards 2 to 5 of every suit. Durak can be played with any amount of cards divisible by four though (because there are four suits). Multiple decks can even be combined, duplicates are not treated differently.
 
 The goal of the game is to get rid of one's cards so as not to be the durak (Russian: Дурáк, meaning ``fool''). First, a deck is shuffled and each player is dealt six cards (or, for example, only five if there are not enough cards -- durak is very flexible) and one card is laid on the table for everyone to see. This is the card determining the trump suit for the current game. The deck is placed on the open card as a talon. The revealed card is part of the talon, so the last card drawn is always a trump.
 There are two phases in the game: When the talon is not empty, players redraw cards from it and can not yet win. When it has been completely drawn, players can start emptying their hands and ultimately win. However, this is not exactly correct, as in durak, there is no winner, only a loser. I will, however, use the term winner for ``not loser''. \medskip
 
-The player with the lowest trump begins the game. They attack with a card of their choice that the next player in clockwise order then has to defend by placing a card of the same suit with a higher value onto it. The defending player can also use a trump to defend any card except another trump with a higher value. The defender's neighbours, the first and second attacker, can place any card whose value is already on the table as another attack (so the attackers can also instantly place two or more cards of the same value on the table). They can do this until there are either six (or, depending on the hand size, another value) cards on the table or as many cards as the defender has remaining in his hand. In classic durak, only five cards can be placed before the first successful defense but I will do without this rule.
+The player with the lowest trump begins the game (if there are duplicates and several players have the lowest trump, the next lowest trump could be taken instead). They attack with a card of their choice that the next player in clockwise order then has to defend by placing a card of the same suit with a higher value onto it. The defending player can also use a trump to defend any card except another trump with a higher value. The defender's neighbours, the first and second attacker, can place any card whose value is already on the table as another attack (so the attackers can also instantly place two or more cards of the same value on the table). They can do this until there are either six (or, depending on the hand size, another value) cards on the table or as many cards as the defender has remaining in his hand. In classic durak, only five cards can be placed before the first successful defense but I will do without this rule.
 
 If the defense is successful, that means that no attacker can or wants to put another card as an attack, all cards on the table are removed and the players draw from the talon in order of attackers with the defender always drawing last. The defender then attacks the next player.
 If the defending player cannot defend all cards, they must pick up every card on the table and cannot start attacking the next round. Instead, the second attacker begins after the players drew cards like before.
@@ -67,11 +69,18 @@ In Wikipedia~\cite{wikidurak}, durak refers to the page ``Games of skill'' in it
 
 The version that I will mostly concentrate on is played with a deck of 52 cards and 6 cards in hand. Pushing and immediate moving up when a player is out is allowed.
 
+\section{Reinforcement Learning}
+
+Reinforcement learning is an area of machine learning trying to model human trial-and-error learning mathematically. At time $t$, an agent interacts with an environment's state $s_t$ by executing an action $a_t$ that is chosen based on a learned policy $\pi$.
+TODO
+
 \section{Challenges}
 
-In durak, there are many different states of the game that can occur. Therefore, the problem cannot be solved using tabular methods. Instead I use a neural network to approximate the action-value function so that the agent can try and calculate the best action for a given game state. Another problem is that the action space is very big. There are only five different types of actions -- attacking, defending, pushing, checking (telling the others that you do not want to attack or defend anymore) and simply waiting. However, attacking, defending and pushing have to specify in which way to interact with the game. Which card to put on the table in the case of attacking and pushing needs to be specified. For defending, which card to defend is also important. These are parametrized actions. The actions themselves are discrete but they accept parameters that specify what the action does. The parameters are also discrete and in a given state, there is only a limited number of possible parameters. For the neural network that does not know the game's rules, however, any card could be put anywhere.
+In durak, there are many different states of the game that can occur. Therefore, the problem cannot be solved using tabular methods. Instead I use two artificial neural networks. One calculates which action to take in a given game state, the ``actor'', and one approximates the action-value function so as to give the actor feedback on its decision and help it learn. Therefore, that network is called the ``critic''.
+Another problem is that the action space is very big. There are only five different types of actions -- attacking, defending, pushing, checking (telling the others that you do not want to attack or defend anymore) and simply waiting. However, attacking, defending and pushing have to specify in which way to interact with the game. In the case of attacking and pushing, which card to put on the table needs to be specified. For defending, which card to defend is also necessary information. Those cards are the action's parameters, that is why these actions are called parametrized actions. The actions themselves are discrete but they accept parameters that specify what the action does. The parameters are also discrete and in a given state, there is only a limited number of possible parameters. For the neural network that does not know the game's rules, however, any card could be put anywhere. This problem can be solved simply by giving the agent a big negative reward when it chooses an action that is not allowed. While this approach works, it might also influence other decisions because of the network's generalization capabilities. Given enough time, it should learn to not execute only illegal actions but still, the problem might occur.
 
-So the huge space of all parametrized and unparametrized actions needs to be limited to just a few of which most actions are probably not even correct. If the neural network is given a big negative reward for an action that is not allowed, it will eventually learn not to execute it in the given state. This approach's problem is that it also influences other decisions of the agent since the neural network generalizes from its experiences. Also, when using an $\epsilon$-greedy strategy in which the agent takes the actions with most reward $1 - \epsilon$ of the time but with probability $\epsilon$ a random action so as to let the agent explore the other actions, a lot of disallowed actions will still be taken.
+Also, it is not easy find a general solution that defines the game's state at a given point in time. Because the amount of players can vary, one cannot simply create a binary feature for each card for each player that determines whether the player holds that card. The size of the state vector would change depending on how many players there are. Indexing where a card is located from the agent is sadly not a solution because the neural net cannot approximate a function from that information.
+To find a general state vector for any amount of players, one could, for example, only store the card information for the two neighbouring players since they are of most importance to the agent. Information is lost when doing this but the state definition can be used for any amount of players and cards if the deck has no duplicates. To also have a general state vector for duplicates, the problem can be solved by storing how many of each card the players have.
 
 \newpage
 
@@ -79,9 +88,18 @@ So the huge space of all parametrized and unparametrized actions needs to be lim
 
 \bibitem{wikidurak}
   Wikipedia contributors. ``Durak.'' \emph{Wikipedia, The Free Encyclopedia}. Wikipedia, The Free Encyclopedia, 31 Aug. 2017. Web.
-7 Sep. 2017
-., \\
-\url{en.wikipedia.org/w/index.php?title=Durak&oldid=798247605}
+  7 Sep. 2017., \\
+  \url{en.wikipedia.org/w/index.php?title=Durak&oldid=798247605}
+
+\bibitem{torcs}
+  Lau, Ben. ``Using Keras and Deep Deterministic Policy Gradient to play TORCS.'' \emph{GitHub Pages}. GitHub, 11 Oct. 2016. Web.
+  12 Sep. 2017., \\
+  \url{https://yanpanlau.github.io/2016/10/11/Torcs-Keras.html}
+
+\bibitem{book}
+  Sutton, Richard S., and Andrew G. Barto. ``Reinforcement Learning: An Introduction.'' \emph{Reinforcement Learning: An Introduction}. Rich Sutton's Home Page, 19 Jun. 2017. Web.
+  20 Jun. 2017., \\
+  \url{http://incompleteideas.net/sutton/book/bookdraft2017june19.pdf}
 
 \end{thebibliography}
 

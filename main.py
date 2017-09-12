@@ -40,10 +40,10 @@ n2_critic = 150
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
-# win and loss reward's absolute value should be the same for speed
 win_reward = 70
 loss_reward = -70
 wait_reward = -1
+illegal_action_reward = -100
 # how often random bots wait
 # calculated from a normal distribution with the given values
 psi_mu = 0.95
@@ -582,7 +582,7 @@ class ActionReceiver(threading.Thread):
             if action in self.possible_actions:
                 self.add_action(action)
             else:
-                self.reward = -500
+                self.reward = illegal_action_reward
                 self.add_action(game.wait_action())
         else:
             action = choice(self.possible_actions)
