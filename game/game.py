@@ -149,7 +149,9 @@ class Game:
                     if (mini == 2 or self.deck.bottom_trump.num_value == 2
                             and mini == 3):
                         break
-        self.defender_ix = (beginner_ix + 1) % self.player_count
+        self.defender_ix = beginner_ix + 1
+        if self.defender_ix == self.player_count:
+            self.defender_ix = 0
         return beginner_ix, beginner_card
 
     def attack(self, attacker_ix, cards):

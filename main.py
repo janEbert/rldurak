@@ -40,6 +40,10 @@ n2_critic = 150
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
+# win and loss reward's absolute value should be the same for speed
+win_reward = 70
+loss_reward = -70
+wait_reward = -1
 # how often random bots wait
 # calculated from a normal distribution with the given values
 psi_mu = 0.95
@@ -159,7 +163,7 @@ def main_loop():
                 action_queue.task_done()
                 if action[0] == 4:
                     if only_ais or player_ix == game.kraudia_ix:
-                        reward(active_player_indices, player_ix, -1)
+                        reward(active_player_indices, player_ix, wait_reward)
                     threads[active_player_indices.index(player_ix)].event.set()
                 continue
             if verbose:
@@ -339,12 +343,12 @@ def reward_winner(active_player_indices, player_ix):
     Also reward loser if there is one.
     """
     if only_ais or player_ix == game.kraudia_ix:
-        reward(active_player_indices, player_ix, 100)
+        reward(active_player_indices, player_ix, win_reward)
     if game.will_end():
         if only_ais:
-            reward(active_player_indices, 1 - player_ix, -100)
+            reward(active_player_indices, 1 - player_ix, loss_reward)
         elif player_ix != game.kraudia_ix and game.kraudia_ix >= 0:
-            reward(active_player_indices, game.kraudia_ix, -100)
+            reward(active_player_indices, game.kraudia_ix, loss_reward)
 
 
 def train(state, action, reward, new_state):
@@ -352,9 +356,10 @@ def train(state, action, reward, new_state):
     global actor, critic
     target_q = critic.target_model.predict([new_state,
             actor.target_model.predict(new_state)])
-    target = reward
-    if abs(target) != 100:
-        target += gamma * target_q
+    if reward == win_reward or reward == loss_reward:
+        target = reward
+    else:
+        target = reward + gamma * target_q
     critic.model.train_on_batch([state, action], target)
     predicted_action = actor.model.predict(state)
     gradients = critic.get_gradients(state, predicted_action)
@@ -374,11 +379,11 @@ def train_from_memory():
     actions = np.asarray([experience[1] for experience in batch])
     rewards = np.asarray([experience[2] for experience in batch])
     new_states = np.asarray([experience[3] for experience in batch])
-    targets = rewards.copy()
     target_qs = critic.target_model.predict([new_states,
             actor.target_model.predict(new_states)], batch_size=len(batch))
+    targets = rewards.copy()
     for i in range(len(batch)):
-        if abs(targets[i]) != 100:
+        if targets[i] != win_reward and targets[i] != loss_reward:
             targets[i] += gamma * target_qs[i]
     critic.model.train_on_batch([states, actions], targets)
     predicted_actions = actor.model.predict(states)
@@ -404,13 +409,13 @@ def end_turn(first_attacker_ix, experience_list):
         if game.is_winner(first_attacker_ix):
             if only_ais or first_attacker_ix == game.kraudia_ix:
                 experience_list = complete_experience(experience_list,
-                        first_attacker_ix, 100)
+                        first_attacker_ix, win_reward)
             update_experience_list_indices(first_attacker_ix)
             if game.remove_player(first_attacker_ix):
                 if (only_ais or first_attacker_ix != game.kraudia_ix
                         and game.kraudia_ix >= 0):
                     experience_list = complete_experience(experience_list,
-                            1 - first_attacker_ix, -100)
+                            1 - first_attacker_ix, loss_reward)
                 return [item[0] for item in experience_list] # TODO remove
             elif first_attacker_ix == game.player_count:
                 first_attacker_ix = 0
@@ -444,13 +449,13 @@ def end_turn(first_attacker_ix, experience_list):
         if game.is_winner(first_attacker_ix):
             if only_ais or first_attacker_ix == game.kraudia_ix:
                 experience_list = complete_experience(experience_list,
-                        first_attacker_ix, 100)
+                        first_attacker_ix, win_reward)
             update_experience_list_indices(first_attacker_ix)
             if game.remove_player(first_attacker_ix):
                 if (only_ais or first_attacker_ix != game.kraudia_ix
                         and game.kraudia_ix >= 0):
                     experience_list = complete_experience(experience_list,
-                            1 - first_attacker_ix, -100)
+                            1 - first_attacker_ix, loss_reward)
         else:
             game.draw(first_attacker_ix)
             if only_ais or first_attacker_ix == game.kraudia_ix:
@@ -698,7 +703,7 @@ if __name__ == '__main__':
         average_duration /= completed_episodes
         win_rate /= completed_episodes
     print('Finished {0}/{1} episode{2} after {3:.2f} seconds; '
-            'average: {4:.4f} seconds per episode'.format(completed_episodes,
+            'average: {4:.2f} seconds per episode'.format(completed_episodes,
             episodes, plural_s, duration, average_duration))
     print('Kraudia won {0}/{1} games which is a win rate of {2:.2f} %'.format(
             wins, completed_episodes, win_rate))

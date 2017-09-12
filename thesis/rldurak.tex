@@ -33,8 +33,9 @@
 
 Reinforcement learning -- and machine learning in general -- is one of the most progressive scientific fields in present time. Learning like a human by trial and error is fascinatingly useful and can have big influences on a lot of very different subjects. Because computers are much faster at calculating than a human and can concentrate solely on the problem at hand, not needing time to, for example, do the dishes, they can find correlations that even experts of certain topics have not discovered yet; simply by magnitude of observations.
 
-However, reinforcement learning is also not easy. To try and understand reinforcement learning, I model the Russian card game durak and let an agent learn it. It does that by first playing against players that only execute random actions and then, when it has learned enough to understand the basics of the game, by playing and improving against itself.
-Durak is an interesting game for many reasons: it has many different variations.
+However, reinforcement learning is also not easy. To try and understand reinforcement learning, I model the Russian card game durak and let an agent learn it. It does that by first playing against players that only execute random actions and then, when it has learned enough to understand the basics of the game, by playing and improving against itself. I want to solve the game without explicitly modeling it by calculations of probabilities. The agent simply plays the game and learns to find regularities and an optimal strategy without further interaction from my side.
+
+Durak is an interesting game for this task for many reasons: First of all, it has many variables. In durak, the amount of cards in the deck, amount of cards in hand or even amount of players can vary. The amount of players in the game varies even while playing. Winners are removed from the game while the others continue to compete. It is a competitive multi-agent game with limited information up until the end when the players have perfect information. In each game state, there are a lot of very different actions. Each decision might end up changing the end result of the game.
 
 In short, I apply what I have not learned to what I \emph{have} learned during my time in university -- durak.
 
@@ -60,7 +61,7 @@ Another rule that is not in classic durak is pushing. Pushing means that, when n
 
 The last player with cards in hand is the loser and receives the title of ``durak''. They have to shuffle and deal the cards for the next game and are the first to be attacked. When a new player joins the others or someone leaves, it is a new game and the player with the lowest trump begins the game instead as if there was no durak. If no player has a trump in hand, I randomly select a beginner. \medskip
 
-Durak is also notorious for being a game that allows cheating. Player can place anything they want on the table. Even if anybody notices their cheating, there is no penalty -- they just have to take the card back in hand. While this is great for teaching new players the rules of the game, a learning agent would be distracted by it so I will only focus on ``fair'' durak.
+Durak is also notorious for being a game that allows cheating. Players can place anything they want on the table. Even if anybody notices their cheating, there is no penalty -- they just have to take the card back in hand. While this is great for teaching new players the rules of the game, a learning agent would be distracted by it so I will only focus on ``fair'' durak.
 
 In Wikipedia~\cite{wikidurak}, durak refers to the page ``Games of skill'' in its section ``See also''. With the learning agent, I want to test whether that reference is correct. While there is randomness and luck in the game, the agent should get a higher win rate (non-loss rate) than a casual player. \medskip
 
