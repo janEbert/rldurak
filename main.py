@@ -352,8 +352,8 @@ def train(state, action, reward, new_state):
     global actor, critic
     target_q = critic.target_model.predict([new_state,
             actor.target_model.predict(new_state)])
-    target = action.copy()
-    if abs(reward) != 100:
+    target = reward
+    if abs(target) != 100:
         target += gamma * target_q
     critic.model.train_on_batch([state, action], target)
     predicted_action = actor.model.predict(state)
@@ -374,14 +374,12 @@ def train_from_memory():
     actions = np.asarray([experience[1] for experience in batch])
     rewards = np.asarray([experience[2] for experience in batch])
     new_states = np.asarray([experience[3] for experience in batch])
-    targets = actions.copy()
+    targets = rewards.copy()
     target_qs = critic.target_model.predict([new_states,
             actor.target_model.predict(new_states)], batch_size=len(batch))
     for i in range(len(batch)):
-        if abs(rewards[i]) == 100:
-            targets[i] = rewards[i]
-        else:
-            targets[i] = rewards[i] + gamma * target_qs[i]
+        if abs(targets[i]) != 100:
+            targets[i] += gamma * target_qs[i]
     critic.model.train_on_batch([states, actions], targets)
     predicted_actions = actor.model.predict(states)
     gradients = critic.get_gradients(states, predicted_actions)
