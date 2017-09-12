@@ -153,6 +153,8 @@ def main_loop():
             if game.players[player_ix].checks or action[0] == 4:
                 action_queue.task_done()
                 if action[0] == 4:
+                    if only_ais or player_ix == game.kraudia_ix:
+                        reward(active_player_indices, player_ix, -1)
                     threads[active_player_indices.index(player_ix)].event.set()
                 continue
             if verbose:
