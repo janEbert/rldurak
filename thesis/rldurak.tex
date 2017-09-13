@@ -2,7 +2,7 @@
 
 \hyphenation{Du-rak}
 
-\usepackage{amsmath}
+\usepackage{amsmath, amssymb}
 
 \usepackage[T1,T2A]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -17,22 +17,44 @@
 \widowpenalty=300
 \clubpenalty=300
 
-\DeclareMathOperator{\argmax}{arg\,max}
-\DeclareMathOperator{\argmin}{arg\,min}
+\DeclareMathOperator{\Expectation}{\mathbb{E}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\newcommand{\Exp}[3]{\Expectation_{#1} \left[ #2 \ \middle| \ #3 \right]}
+\newcommand{\Ex}[2]{\Expectation_{#1} \left[ #2 \right]}
 
 \title{Reinforcement Learning for Durak \\ \medskip \large{Bachelor's Thesis on Reinforcement Learning}}
 %\subtitle{Bachelor's Thesis on Reinforcement Learning}
 \author{Jan Ebert \\  \\ \small{Cognitive Informatics} \\ \small{Faculty of Technology}}
 \date{\today}
 
+\pagenumbering{roman}
+
 \begin{document}
 
 \maketitle
 
+\setcounter{page}{2}
+\thispagestyle{empty}
 \noindent
 This thesis has been written solely by myself, Jan Ebert. All sources have been referenced.
 
 \begin{abstract}
+\setcounter{page}{3}
+I adapt the successful deep deterministic policy gradient algorithm to the card game durak. The proposed model is supposed to work for most variants of durak.
+\end{abstract}
+
+\setcounter{page}{4}
+\thispagestyle{empty}
+\tableofcontents
+
+\newpage
+
+\pagenumbering{arabic}
+
+\section{Introduction}
+
 Reinforcement learning -- and machine learning in general -- is one of the most progressive scientific fields in present time. Learning like a human by trial and error is fascinatingly useful and can have big influences on a lot of very different subjects. Because computers are much faster at calculating than a human and can concentrate solely on the problem at hand, not needing time to, for example, do the dishes, they can find correlations that even experts of certain topics have not discovered yet; simply by magnitude of observations.
 
 However, reinforcement learning is also not easy. To try and understand reinforcement learning, I model the Russian card game durak and let an agent learn it. It does that by first playing against players that only execute random actions and then, when it has learned enough to understand the basics of the game, by playing and improving against itself. I want to solve the game without explicitly modeling it by calculations of probabilities. The agent simply plays the game and learns to find regularities and an optimal strategy without further interaction from my side.
@@ -40,10 +62,6 @@ However, reinforcement learning is also not easy. To try and understand reinforc
 Durak is an interesting game for this task for many reasons: First of all, it has many variables. In durak, the amount of cards in the deck, amount of cards in hand or even amount of players can vary. The amount of players in the game varies even while playing: Winners are removed from the game while the others continue to compete. It is a competitive multi-agent game with limited information up until the end when the remaining players have perfect information. In each game state, there are a lot of very different actions. Each decision might end up changing the end result of the game.
 
 In short, I apply what I have not learned to what I \emph{have} learned during my time in university -- durak.
-
-\end{abstract}
-
-\tableofcontents
 
 \newpage
 
@@ -69,18 +87,59 @@ In Wikipedia~\cite{wikidurak}, durak refers to the page ``Games of skill'' in it
 
 The version that I will mostly concentrate on is played with a deck of 52 cards and 6 cards in hand. Pushing and immediate moving up when a player is out is allowed.
 
+\newpage
+
 \section{Reinforcement Learning}
 
-Reinforcement learning is an area of machine learning trying to model human trial-and-error learning mathematically. At time $t$, an agent interacts with an environment's state $s_t$ by executing an action $a_t$ that is chosen based on a learned policy $\pi$.
-TODO
+Reinforcement learning is an area of machine learning trying to model human trial-and-error learning mathematically. Sutton and Barto summarize it like this: ``Reinforcement learning is a computational approach to understanding and automating goal-directed learning and decision-making. It is distinguished from other computational approaches by its emphasis on learning by an agent from direct interaction with its environment, without relying on exemplary supervision or complete models of the environment.''~\cite[p.~15]{book} At time $t$, an agent interacts with an environment's state $s_t$ by executing an action $a_t$ that is chosen based on a learned policy $\pi$. A policy can be understood as a mapping from a state to an action that is then taken. The agent then receives a reward $r_t$ and observes a new state $s_{t+1}$. Learning is based on maximizing the expected, cumulative future reward, also called the \emph{return}. The return is usually discounted by a factor $0 \leq \gamma \leq 1$ to control the agent's foresight. The greater $\gamma$, the more strongly future rewards are taken into account. Thus, we get
+\begin{equation*}
+  R_t \doteq r_{t+1} + \gamma r_{t+2} + \gamma^2 r_{t+3} + ... = \sum_{k = 0}^{\infty} \gamma^k r_{t+k+1}.
+\end{equation*}
+These returns can be used to estimate how good taking a certain action and then following policy $\pi$ is in a given state:
+\begin{equation*}
+  q_\pi(s_t, a_t) \doteq \Exp{\pi}{R_t}{s_t, a_t} = \Exp{\pi}{\sum_{k = 0}^{\infty} \gamma^k r_{t+k+1}}{s_t, a_t},
+\end{equation*}
+which is the \emph{action-value function} of the policy $\pi$.
+$q_\pi$ can be estimated from experience and that is one of the key things reinforcement learning accomplishes.
+Also, $q_\pi$ satisfies a recursive relationship, called the \emph{Bellman equation}:
+\begin{align*}
+  q_\pi(s_t, a_t) &= \Exp{\pi}{R_t}{s_t, a_t} \\
+  &= \Exp{\pi}{r_{t+1} + \gamma R_{t + 1}}{s_t, a_t} \\
+  &= \Ex{r_{t+1}, s_{t+1}}{r_{t+1} + \gamma \Exp{\pi, a_{t+1}\sim\pi}{R_{t+1}}{s_{t+1}, a_{t+1}}} \\
+  &= \Ex{r_{t+1}, s_{t+1}}{r_{t+1} + \gamma q_\pi(s_{t+1}, a_{t+1}},
+\end{align*}
+which can only be written this way if $\pi$ is deterministic, meaning that $\pi$ does not model probabilities of choosing an action but instead is an explicit action.
+
+We seek an optimal policy $\pi_*$ that fulfills $q_{\pi_*}(s, a) \doteq \max_\pi q_\pi(s, a)$. If $\pi_*$ is found, the reinforcement learning problem is solved. This optimal policy can only be defined for \emph{finite Markov-Decision-Processes}. A reinforcement learning problem is called a Markov-Decision-Process if a state can summarize all information that matters for the present and future of the problem. It is a finite Markov-Decision-Process if its action and state spaces are finite. However, this is mostly important for the theory of reinforcement learning and while durak can be viewed as a finite Markov-Decision-Process, it is usually okay to not have perfect information. Meaning that we do not need a perfect representation of the game's state to achieve good results. This can be compared to humans playing a card game. It is often enough to track only the most important cards instead of every single one. \medskip
+
+This section was notably influenced by the third chapter of the Sutton and Barto book on reinforcement learning~\cite{book}.
+
+\newpage
+
+\section{Artificial Neural Networks}
+
+For small state and action spaces, every state's action-value function for each action can be stored in a table and retrieved as desired. In real-world applications, however, there are usually a lot of actions possible in a lot of states. State and action spaces can even be continuous with an infinite number of possibilities (only almost infinite in practice since computers cannot represent all real numbers). Storing each value would take absurd amounts of memory and learning each value would take too much of time. So the agent needs to generalize from states it has seen to similar ones. To solve this problem, the action-value function is only approximated instead of fully solved. There are a lot of different function approximators in the field of machine learning, most notably artificial neural networks. Neural networks are universal, nonlinear function approximators, meaning that they can approximate any possible function up to a certain error, based on -- as the name implies -- networks of neurons. A neural network consists of layers of neurons that are usually fully connected in a feed-forward manner. Each neuron sums its incoming activations multiplied by individual weights and then applies a nonlinear activation function on that sum.  % TODO visual
+It is important that the activations are nonlinear, else, neural networks would just be linear function approximators and lose their unique capabilities.
+Neural networks can be trained by methods of \emph{gradient descent} on an error or loss function.
+
+However, large neural networks were known to not converge for most action-value functions. This changed when the deep Q-network created by DeepMind  Technologies (now Google DeepMind) achieved great results on learning a lot of different Atari games purely by pixel data based on the same architecture~\cite{nature}. There are two very relevant ideas for stabilization. The first is experience replay which means that experience tuples $(a_t, s_t, r_t, s_{t+1})$ are stored in memory and instead of training on the most recent experience, a random batch of experiences is selected. The neural network then trains on that batch to minimize correlations between experiences and improve speed (because most libraries are optimized on batch learning). The second measure taken is that instead of directly training the network, a different target network is used to train the actual network. This improves the consistence of the targets for training because the model does not change as quickly. The target network is only updated to a copy of the actual network every $C$ steps. Sadly, the deep Q-network is not feasible for the task at hand because the network requires discrete actions without parameters (more on that in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}). Luckily, this problem has been solved by the deep deterministic policy gradient~(DDPG) algorithm~\cite{ddpg}, also developed by Google DeepMind, which can operate over continuous action spaces.
+
+\subsection{Deep Deterministic Policy Gradient}
+
+\newpage
 
 \section{Challenges}
 
-In durak, there are many different states of the game that can occur. Therefore, the problem cannot be solved using tabular methods. Instead I use two artificial neural networks. One calculates which action to take in a given game state, the ``actor'', and one approximates the action-value function so as to give the actor feedback on its decision and help it learn. Therefore, that network is called the ``critic''.
+\label{sec:challenges}
+In durak, there are many different states of the game that can occur. Therefore, the problem cannot be solved using tabular methods. Instead, two artificial neural networks are trained. One calculates which action to take in a given game state, the ``actor'', and one approximates the action-value function so as to give the actor feedback on its decision and help it learn. Therefore, that network is called the ``critic''.
 Another problem is that the action space is very big. There are only five different types of actions -- attacking, defending, pushing, checking (telling the others that you do not want to attack or defend anymore) and simply waiting. However, attacking, defending and pushing have to specify in which way to interact with the game. In the case of attacking and pushing, which card to put on the table needs to be specified. For defending, which card to defend is also necessary information. Those cards are the action's parameters, that is why these actions are called parametrized actions. The actions themselves are discrete but they accept parameters that specify what the action does. The parameters are also discrete and in a given state, there is only a limited number of possible parameters. For the neural network that does not know the game's rules, however, any card could be put anywhere. This problem can be solved simply by giving the agent a big negative reward when it chooses an action that is not allowed. While this approach works, it might also influence other decisions because of the network's generalization capabilities. Given enough time, it should learn to not execute only illegal actions but still, the problem might occur.
 
 Also, it is not easy find a general solution that defines the game's state at a given point in time. Because the amount of players can vary, one cannot simply create a binary feature for each card for each player that determines whether the player holds that card. The size of the state vector would change depending on how many players there are. Indexing where a card is located from the agent is sadly not a solution because the neural net cannot approximate a function from that information.
 To find a general state vector for any amount of players, one could, for example, only store the card information for the two neighbouring players since they are of most importance to the agent. Information is lost when doing this but the state definition can be used for any amount of players and cards if the deck has no duplicates. To also have a general state vector for duplicates, the problem can be solved by storing how many of each card the players have.
+
+\newpage
+
+\section{Architecture}
 
 \newpage
 
@@ -91,15 +150,23 @@ To find a general state vector for any amount of players, one could, for example
   7 Sep. 2017., \\
   \url{en.wikipedia.org/w/index.php?title=Durak&oldid=798247605}
 
-\bibitem{torcs}
-  Lau, Ben. ``Using Keras and Deep Deterministic Policy Gradient to play TORCS.'' \emph{GitHub Pages}. GitHub, 11 Oct. 2016. Web.
-  12 Sep. 2017., \\
-  \url{https://yanpanlau.github.io/2016/10/11/Torcs-Keras.html}
-
 \bibitem{book}
   Sutton, Richard S., and Andrew G. Barto. ``Reinforcement Learning: An Introduction.'' \emph{Reinforcement Learning: An Introduction}. Rich Sutton's Home Page, 19 Jun. 2017. Web.
   20 Jun. 2017., \\
-  \url{http://incompleteideas.net/sutton/book/bookdraft2017june19.pdf}
+  \url{incompleteideas.net/sutton/book/bookdraft2017june19.pdf}
+
+\bibitem{nature}
+  Mnih, Volodymyr, Koray Kavukcuoglu, David Silver, et al. ``Human-level control through deep reinforcement learning.'' \emph{Nature}. Nature, 518: 529-533, 26 Feb. 2015.
+
+\bibitem{ddpg}
+  Lillicrap, Timothy P., Jonathan J. Hunt, et al. ``Continuous control with deep reinforcement learning.'' \emph{arXiv.org}. arXiv:1509.02971v5, 29 Feb. 2016. Web.
+  10 Sep. 2017., \\
+  \url{arxiv.org/pdf/1509.02971v5}
+
+\bibitem{torcs}
+  Lau, Ben. ``Using Keras and Deep Deterministic Policy Gradient to play TORCS.'' \emph{GitHub Pages}. GitHub, 11 Oct. 2016. Web.
+  8 Sep. 2017., \\
+  \url{yanpanlau.github.io/2016/10/11/Torcs-Keras.html}
 
 \end{thebibliography}
 

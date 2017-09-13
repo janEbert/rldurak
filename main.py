@@ -619,7 +619,8 @@ class ActionReceiver(threading.Thread):
 def store_experience(experience):
     """Store an experience and overwrite old ones if necessary.
 
-    Threadsafe.
+    An experience is a tuple consisting of (state, action, reward,
+    new state). This function is threadsafe.
     """
     global experiences, experience_ix, experience_lock
     experience_lock.acquire()
