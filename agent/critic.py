@@ -1,9 +1,14 @@
+import sys
+
 import keras.backend as K
 from keras.layers import Input, Dense
 from keras.layers.merge import add
 from keras.models import Model
 from keras.optimizers import Adam # , RMSprop, SGD
 import tensorflow as tf
+
+if sys.version_info[0] == 2:
+    range = xrange
 
 
 class Critic:

@@ -1,4 +1,8 @@
+import sys
 from random import shuffle as rshuffle, randint
+
+if sys.version_info[0] == 2:
+    range = xrange
 
 values = [str(x) for x in range(2, 10)] + ['T', 'J', 'Q', 'K', 'A']
 value_dict = dict(zip(values, range(13)))

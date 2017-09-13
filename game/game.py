@@ -1,3 +1,4 @@
+import sys
 from itertools import chain
 from threading import Lock
 
@@ -6,6 +7,9 @@ import numpy as np
 import game.deck as deck
 import game.player as player_m
 import game.field as field
+
+if sys.version_info[0] == 2:
+    range = xrange
 
 
 class Game:
@@ -95,10 +99,9 @@ class Game:
             self.out_index = self.field_index + deck_size
             self.after_index = self.out_index + deck_size
             if self.only_ais:
-                self.player_indices = []
-                for i in range(self.player_count):
-                    self.player_indices.append([ix * deck_size
-                            for ix in self.indices_from[i]])
+                self.player_indices = [[ix * deck_size
+                        for ix in player_indices]
+                        for player_indices in self.indices_from]
                 self.features = np.zeros((self.player_count,
                         self.after_index + 4))
                 self.features[:, self.after_index] = -1
@@ -720,10 +723,7 @@ class Game:
         If no index is given, Kraudia's index is used.
         """
         if player_ix is None:
-            if self.kraudia_ix == 0:
-                return self.indices_from_kraudia[self.player_count - 1]
-            else:
-                return self.indices_from_kraudia[self.kraudia_ix - 1]
+            player_ix = self.kraudia_ix
         assert player_ix < self.player_count, 'Player does not exist'
         if player_ix == 0:
             return self.player_count - 1
@@ -737,10 +737,7 @@ class Game:
         If no index is given, Kraudia's index is used.
         """
         if player_ix is None:
-            if self.kraudia_ix == self.player_count - 1:
-                return self.indices_from_kraudia[0]
-            else:
-                return self.indices_from_kraudia[self.kraudia_ix + 1]
+            player_ix = self.kraudia_ix
         assert player_ix < self.player_count, 'Player does not exist'
         if player_ix == self.player_count - 1:
             return 0

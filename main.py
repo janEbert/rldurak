@@ -2,6 +2,7 @@ import sys
 import threading
 if sys.version_info[0] == 2:
     import Queue
+    range = xrange
 elif sys.version_info[0] == 3:
     import queue
 from random import choice, sample
@@ -23,7 +24,7 @@ episodes = 10
 only_ais = False
 load = False # whether to load the models' weights
 verbose = True # whether to print game progress
-feature_type = 1 # 1, 2 or (unsupported) 3
+feature_type = 2 # 1, 2 or (unsupported) 3
 # starting value for how often a random action is taken by AIs
 # linearly anneals min_epsilon in the first epsilon_count actions
 min_epsilon = 0.1

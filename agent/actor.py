@@ -1,7 +1,12 @@
+import sys
+
 import keras.backend as K
 from keras.layers import Input, Dense
 from keras.models import Model
 import tensorflow as tf
+
+if sys.version_info[0] == 2:
+    range = xrange
 
 
 class Actor:
