@@ -32,7 +32,6 @@ class Game:
         3 for a feature vector of constant size with very limited
           information. Also using indices to determine card locations.
         """
-        assert feature_type != 2, 'Currently not working'
         assert not (deck_size > 52 and feature_type == 2), ('Feature type 2 '
                 'is only supported for deck sizes without duplicates '
                 '(52 or less)')
@@ -63,7 +62,7 @@ class Game:
             #   and -1 is on field
             #   >= 0 are indices from Kraudia's position
             # 1 feature for which suit next player could not defend
-            #   num_suit of card
+            #   num_suit of card (-1 if unknown)
             # 1 feature for whether the defending player checks
             #   binary
             # 1 feature for deck size
@@ -82,20 +81,38 @@ class Game:
                 self.features[deck_size + 2] = self.deck.size
         elif feature_type == 2:
             # (player_count + 2) * deck_size features for whether a
-            # player has a card TODO this is wrong, need field and yard
+            # player has a card, it is on the field or out of the game
             #   binary
             # 1 feature for which suit next player could not defend
-            #   num_suit of card
+            #   num_suit of suit (-1 if unknown)
+            # 1 feature for value of bottom trump
+            #   num_value of card
             # 1 feature for whether the defending player checks
             #   binary
             # 1 feature for deck size
             #   size of deck
+            self.field_index = self.player_count * deck_size
+            self.out_index = self.field_index + deck_size
+            self.after_index = self.out_index + deck_size
             if self.only_ais:
+                self.player_indices = []
+                for i in range(self.player_count):
+                    self.player_indices.append([ix * deck_size
+                            for ix in self.indices_from[i]])
                 self.features = np.zeros((self.player_count,
-                        (self.player_count + 2) * deck_size + 3))
+                        self.after_index + 4))
+                self.features[:, self.after_index] = -1
+                self.features[:, self.after_index + 1] = \
+                        self.deck.bottom_trump.num_value
+                self.features[:, self.after_index + 3] = self.deck.size
             else:
-                self.features = np.zeros((self.player_count + 2)
-                        * deck_size + 3)
+                self.player_indices = [ix * deck_size
+                        for ix in self.indices_from_kraudia]
+                self.features = np.zeros(self.after_index + 4)
+                self.features[self.after_index] = -1
+                self.features[self.after_index + 1] = \
+                        self.deck.bottom_trump.num_value
+                self.features[self.after_index + 3] = self.deck.size
         else:
             # 13 features for number of cards in both neighbour's hands
             # 13 features for each trump card's location
@@ -116,13 +133,19 @@ class Game:
         new_player = player_m.Player(name, self.deck.take(self.hand_size))
         # update features
         if self.only_ais:
-            for card in new_player.cards:
-                self.features[ix, card.index] = 0
+            if self.feature_type == 1:
+                for card in new_player.cards:
+                    self.features[ix, card.index] = 0
+            elif self.feature_type == 2:
+                for card in new_player.cards:
+                    self.features[ix, card.index] = 1
         elif name == 'Kraudia' and self.kraudia_ix < 0:
             self.kraudia_ix = ix
             for card in new_player.cards:
                 if self.feature_type == 1:
                     self.features[card.index] = 0
+                elif self.feature_type == 2:
+                    self.features[card.index] = 1
                 elif card.suit == self.deck.trump_suit:
                     self.features[13 + card.num_value] = 0
         return new_player
@@ -175,15 +198,26 @@ class Game:
         self.field.attack(cards)
         # update features
         if self.only_ais:
-            self.feature_lock.acquire()
-            for card in cards:
-                self.features[:, card.index] = -1
-            self.feature_lock.release()
+            if self.feature_type == 1:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[:, card.index] = -1
+                self.feature_lock.release()
+            elif self.feature_type == 2:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[:, self.field_index + card.index] = 1
+                self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.feature_type == 1:
                 self.feature_lock.acquire()
                 for card in cards:
                     self.features[card.index] = -1
+                self.feature_lock.release()
+            elif feature_type == 2:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[self.field_index + card.index] = 1
                 self.feature_lock.release()
             else:
                 for card in cards:
@@ -210,13 +244,22 @@ class Game:
         self.field.defend(to_defend, card)
         # update features
         if self.only_ais:
-            self.feature_lock.acquire()
-            self.features[:, card.index] = -1
-            self.feature_lock.release()
+            if self.feature_type == 1:
+                self.feature_lock.acquire()
+                self.features[:, card.index] = -1
+                self.feature_lock.release()
+            elif self.feature_type == 2:
+                self.feature_lock.acquire()
+                self.features[:, self.field_index + card.index] = 1
+                self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.feature_type == 1:
                 self.feature_lock.acquire()
                 self.features[card.index] = -1
+                self.feature_lock.release()
+            elif self.feature_type == 2:
+                self.feature_lock.acquire()
+                self.features[self.field_index + card.index] = 1
                 self.feature_lock.release()
             else:
                 # TODO optimizable
@@ -238,15 +281,26 @@ class Game:
         self.field.push(cards)
         # update features
         if self.only_ais:
-            self.feature_lock.acquire()
-            for card in cards:
-                self.features[:, card.index] = -1
-            self.feature_lock.release()
+            if self.feature_type == 1:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[:, card.index] = -1
+                self.feature_lock.release()
+            elif self.feature_type == 2:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[:, self.field_index + card.index] = 1
+                self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.feature_type == 1:
                 self.feature_lock.acquire()
                 for card in cards:
                     self.features[card.index] = -1
+                self.feature_lock.release()
+            if self.feature_type == 2:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[self.field_index + card.index] = 1
                 self.feature_lock.release()
             else:
                 # TODO optimizable
@@ -265,26 +319,42 @@ class Game:
         """Make the defender take all the cards on the field and
         return the amount of cards taken."""
         assert not self.field.is_empty(), 'Field cannot be empty'
-        # update undefended suit feature
+        # update features (for undefended suit)
         # TODO still rudimentary
         if self.only_ais:
             self.feature_lock.acquire()
-            self.features[self.prev_neighbour(self.defender_ix),
-                    self.deck_size] = self.field.attack_cards[0].num_suit
+            if self.feature_type == 1:
+                self.features[self.prev_neighbour(self.defender_ix),
+                        self.deck_size] = self.field.attack_cards[0].num_suit
+            elif self.feature_type == 2:
+                self.features[self.prev_neighbour(self.defender_ix),
+                        self.after_index] = \
+                        self.field.attack_cards[0].num_suit
             if len(self.field.attack_cards) > 1:
                 attack_suits = [card.suit for card in self.field.attack_cards]
                 for (attack_card, defense_card) in self.field.defended_pairs:
                     if (attack_card.suit != self.deck.trump_suit
                             and defense_card.suit == self.deck.trump_suit
                             and attack_card.suit in attack_suits):
-                        self.features[self.prev_neighbour(self.defender_ix),
-                                self.deck_size] = attack_card.num_suit
+                        if feature_type == 1:
+                            self.features[self.prev_neighbour(
+                                    self.defender_ix), self.deck_size] = \
+                                    attack_card.num_suit
+                        elif feature_type == 2:
+                            self.features[self.prev_neighbour(
+                                    self.defender_ix), self.after_index] = \
+                                    attack_card.num_suit
                         break            
             self.feature_lock.release()
-        elif self.defender_ix == self.next_neighbour() and self.kraudia_ix >= 0:
+        elif (self.defender_ix == self.next_neighbour()
+                and self.kraudia_ix >= 0):
             if self.feature_type == 1:
                 self.feature_lock.acquire()
                 self.features[self.deck_size] = \
+                        self.field.attack_cards[0].num_suit
+            elif self.feature_type == 2:
+                self.feature_lock.acquire()
+                self.features[self.after_index] = \
                         self.field.attack_cards[0].num_suit
             else:
                 self.feature_lock.acquire()
@@ -298,6 +368,9 @@ class Game:
                         if self.feature_type == 1:
                             self.features[self.deck_size] = \
                                     attack_card.num_suit
+                        elif self.feature_type == 2:
+                            self.features[self.after_index] = \
+                                    attack_card.num_suit
                         else:
                             self.features[26] = attack_card.num_suit
                         break
@@ -306,18 +379,34 @@ class Game:
         self.players[self.defender_ix].take(cards)
         # update features
         if self.only_ais:
-            self.feature_lock.acquire()
-            for ix in range(self.player_count):
-                for card in cards:
-                    self.features[ix, card.index] = self.indices_from[ix,
-                            self.defender_ix]
-            self.feature_lock.release()
+            if self.feature_type == 1:
+                self.feature_lock.acquire()
+                for ix in range(self.player_count):
+                    for card in cards:
+                        self.features[ix, card.index] = \
+                                self.indices_from[ix][self.defender_ix]
+                self.feature_lock.release()
+            elif self.feature_type == 2:
+                self.feature_lock.acquire()
+                for ix in range(self.player_count):
+                    for card in cards:
+                        self.features[ix, self.field_index + card.index] = 0
+                        self.features[ix, self.player_indices[ix][
+                                self.defender_ix] + card.index] = 1
+                self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.feature_type == 1:
                 self.feature_lock.acquire()
                 for card in cards:
                     self.features[card.index] = self.indices_from_kraudia[
                             self.defender_ix]
+                self.feature_lock.release()
+            elif self.feature_type == 2:                
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[self.field_index + card.index] = 0
+                    self.features[self.player_indices[self.defender_ix]
+                            + card.index] = 1
                 self.feature_lock.release()
             else:
                 # TODO optimizable
@@ -342,13 +431,22 @@ class Game:
         if player_ix == self.defender_ix:
             # update features
             if self.only_ais:
-                self.feature_lock.acquire()
-                self.features[:, self.deck_size + 1] = 1
-                self.feature_lock.release()
+                if self.feature_type == 1:
+                    self.feature_lock.acquire()
+                    self.features[:, self.deck_size + 1] = 1
+                    self.feature_lock.release()
+                elif self.feature_type == 2:
+                    self.feature_lock.acquire()
+                    self.features[:, self.after_index + 2] = 1
+                    self.feature_lock.release()
             elif self.kraudia_ix >= 0:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
                     self.features[self.deck_size + 1] = 1
+                    self.feature_lock.release()
+                elif self.feature_type == 2:
+                    self.feature_lock.acquire()
+                    self.features[self.after_index + 2] = 1
                     self.feature_lock.release()
                 else:
                     self.features[27] = 1
@@ -364,13 +462,22 @@ class Game:
         if player_ix == self.defender_ix:
             # update features
             if self.only_ais:
-                self.feature_lock.acquire()
-                self.features[:, self.deck_size + 1] = 0
-                self.feature_lock.release()
+                if self.feature_type == 1:
+                    self.feature_lock.acquire()
+                    self.features[:, self.deck_size + 1] = 0
+                    self.feature_lock.release()
+                elif self.feature_type == 2:
+                    self.feature_lock.acquire()
+                    self.features[:, self.after_index + 2] = 0
+                    self.feature_lock.release()
             elif self.kraudia_ix >= 0:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
                     self.features[self.deck_size + 1] = 0
+                    self.feature_lock.release()
+                elif self.feature_type == 2:
+                    self.feature_lock.acquire()
+                    self.features[self.after_index + 2] = 0
                     self.feature_lock.release()
                 else:
                     self.features[27] = 0
@@ -387,19 +494,34 @@ class Game:
             player.take(cards)
             # update features
             if self.only_ais:
-                self.feature_lock.acquire()
-                self.features[:, self.deck_size + 2] = self.deck.size
-                for card in cards:
-                    self.features[player_ix, card.index] = 0
-                if self.deck.size == 0:
-                    for ix in range(self.player_count):
-                        self.features[:, self.deck.bottom_trump.index] = \
-                                self.indices_from[ix, player_ix]
-                self.feature_lock.release()
+                if self.feature_type == 1:
+                    self.feature_lock.acquire()
+                    self.features[:, self.deck_size + 2] = self.deck.size
+                    for card in cards:
+                        self.features[player_ix, card.index] = 0
+                    if self.deck.size == 0:
+                        for ix in range(self.player_count):
+                            self.features[ix, self.deck.bottom_trump.index] = \
+                                    self.indices_from[ix][player_ix]
+                    self.feature_lock.release()
+                elif self.feature_type == 2:
+                    self.feature_lock.acquire()
+                    self.features[:, self.after_index + 3] = self.deck.size
+                    for card in cards:
+                        self.features[player_ix, card.index] = 1
+                    if self.deck.size == 0:
+                        for ix in range(self.player_count):
+                            self.features[ix,
+                                    self.player_indices[ix][player_ix]
+                                    + self.deck.bottom_trump.index] = 1
+                    self.feature_lock.release()
             elif self.kraudia_ix >= 0:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
                     self.features[self.deck_size + 2] = self.deck.size
+                elif self.feature_type == 2:
+                    self.feature_lock.acquire()
+                    self.features[self.after_index + 3] = self.deck.size
                 else:
                     self.feature_lock.acquire()
                     self.features[28] = self.deck.size
@@ -407,6 +529,9 @@ class Game:
                     if self.feature_type == 1:
                         for card in cards:
                             self.features[card.index] = 0
+                    elif self.feature_type == 2:
+                        for card in cards:
+                            self.features[card.index] = 1
                     else:
                         for card in cards:
                             if card.suit == self.deck.trump_suit:
@@ -415,6 +540,9 @@ class Game:
                     if self.feature_type == 1:
                         self.features[self.deck.bottom_trump.index] = \
                                 self.indices_from_kraudia[player_ix]
+                    elif self.feature_type == 2:
+                        self.features[self.player_indices[player_ix]
+                                + self.deck.bottom_trump.index] = 1
                     else:
                         self.features[13 + self.deck.bottom_trump.num_value] \
                                 = self.indices_from_kraudia[player_ix]
@@ -425,15 +553,28 @@ class Game:
         cards = self.field.take()
         # update features
         if self.only_ais:
-            self.feature_lock.acquire()
-            for card in cards:
-                self.features[:, card.index] = -2
-            self.feature_lock.release()
+            if self.feature_type == 1:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[:, card.index] = -2
+                self.feature_lock.release()
+            elif self.feature_type == 2:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[:, self.field_index + card.index] = 0
+                    self.features[:, self.out_index + card.index] = 1
+                self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             if self.feature_type == 1:
                 self.feature_lock.acquire()
                 for card in cards:
                     self.features[card.index] = -2
+                self.feature_lock.release()
+            elif self.feature_type == 2:
+                self.feature_lock.acquire()
+                for card in cards:
+                    self.features[self.field_index + card.index] = 0
+                    self.features[self.out_index + card.index] = 1
                 self.feature_lock.release()
             else:
                 # TODO optimizable

@@ -42,7 +42,7 @@ This thesis has been written solely by myself, Jan Ebert. All sources have been 
 
 \begin{abstract}
 \setcounter{page}{3}
-I adapt the successful deep deterministic policy gradient algorithm to the card game durak. The proposed model is supposed to work for most variants of durak.
+I adapt the successful deep deterministic policy gradient algorithm to the card game durak. The proposed model is supposed to work for most variants of durak. The model successfully learns durak's rules and demonstrates better results than simply playing at random.
 \end{abstract}
 
 \setcounter{page}{4}
@@ -110,7 +110,9 @@ Also, $q_\pi$ satisfies a recursive relationship, called the \emph{Bellman equat
 \end{align*}
 which can only be written this way if $\pi$ is deterministic, meaning that $\pi$ does not model probabilities of choosing an action but instead is an explicit action.
 
-We seek an optimal policy $\pi_*$ that fulfills $q_{\pi_*}(s, a) \doteq \max_\pi q_\pi(s, a)$. If $\pi_*$ is found, the reinforcement learning problem is solved. This optimal policy can only be defined for \emph{finite Markov-Decision-Processes}. A reinforcement learning problem is called a Markov-Decision-Process if a state can summarize all information that matters for the present and future of the problem. It is a finite Markov-Decision-Process if its action and state spaces are finite. However, this is mostly important for the theory of reinforcement learning and while durak can be viewed as a finite Markov-Decision-Process, it is usually okay to not have perfect information. Meaning that we do not need a perfect representation of the game's state to achieve good results. This can be compared to humans playing a card game. It is often enough to track only the most important cards instead of every single one. \medskip
+We seek an optimal policy $\pi_*$ that fulfills $q_{\pi_*}(s, a) \doteq \max_\pi q_\pi(s, a)$. If $\pi_*$ is found, the reinforcement learning problem is solved. This optimal policy can only be defined for \emph{finite Markov-Decision-Processes}. A reinforcement learning problem is called a Markov-Decision-Process if a state can summarize all information that matters for the present and future of the problem. It is a finite Markov-Decision-Process if its action and state spaces are finite. However, this is mostly important for the theory of reinforcement learning and while durak can be viewed as a finite Markov-Decision-Process, it is usually okay to not have perfect information. Meaning that we do not need a perfect representation of the game's state to achieve good results. This can be compared to humans playing a card game. It is often enough to track only the most important cards instead of every single one.
+
+A central idea of reinforcement learning is that of temporal-difference learning. Changes in training are based on the comparison, or the \emph{difference}, of the old state to the new state. The method of only calculating the difference of the old state to the directly following state is called TD(0). TD(1) calculates the difference from the very last state received to the first observed state. In between these two are TD($\lambda$) methods with $0 \leq \lambda \leq 1$ which weigh future states depending on $\lambda$, similar to the discount factor $\gamma$. We will focus only on TD(0) which is the basis of the backups considered in this thesis. Backups are changes during learning based on older values. The new value is \emph{backed up} from the old value. \medskip
 
 This section was notably influenced by the third chapter of the Sutton and Barto book on reinforcement learning~\cite{book}.
 
@@ -125,6 +127,8 @@ Neural networks can be trained by methods of \emph{gradient descent} on an error
 However, large neural networks were known to not converge for most action-value functions. This changed when the deep Q-network created by DeepMind  Technologies (now Google DeepMind) achieved great results on learning a lot of different Atari games purely by pixel data based on the same architecture~\cite{nature}. There are two very relevant ideas for stabilization. The first is experience replay which means that experience tuples $(a_t, s_t, r_t, s_{t+1})$ are stored in memory and instead of training on the most recent experience, a random batch of experiences is selected. The neural network then trains on that batch to minimize correlations between experiences and improve speed (because most libraries are optimized on batch learning). The second measure taken is that instead of directly training the network, a different target network is used to train the actual network. This improves the consistence of the targets for training because the model does not change as quickly. The target network is only updated to a copy of the actual network every $C$ steps. Sadly, the deep Q-network is not feasible for the task at hand because the network requires discrete actions without parameters (more on that in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}). Luckily, this problem has been solved by the deep deterministic policy gradient~(DDPG) algorithm~\cite{ddpg}, also developed by Google DeepMind, which can operate over continuous action spaces.
 
 \subsection{Deep Deterministic Policy Gradient}
+
+The 
 
 \newpage
 
@@ -160,8 +164,7 @@ To find a general state vector for any amount of players, one could, for example
 
 \bibitem{ddpg}
   Lillicrap, Timothy P., Jonathan J. Hunt, et al. ``Continuous control with deep reinforcement learning.'' \emph{arXiv.org}. arXiv:1509.02971v5, 29 Feb. 2016. Web.
-  10 Sep. 2017., \\
-  \url{arxiv.org/pdf/1509.02971v5}
+  10 Sep. 2017., \url{arxiv.org/pdf/1509.02971v5}
 
 \bibitem{torcs}
   Lau, Ben. ``Using Keras and Deep Deterministic Policy Gradient to play TORCS.'' \emph{GitHub Pages}. GitHub, 11 Oct. 2016. Web.

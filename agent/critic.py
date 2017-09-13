@@ -65,11 +65,15 @@ class Critic:
                     + (1 - self.tau) * target_weights[i]
         self.target_model.set_weights(target_weights)
 
-    def save_weights(self, file_name='critic.h5'):
+    def save_weights(self, file_name=None):
         """Save the current model's weights."""
+        if file_name is None:
+            file_name = 'critic-' + str(self.state_shape) + '-features.h5'
         self.model.save_weights(file_name)
 
-    def load_weights(self, file_name='critic.h5'):
+    def load_weights(self, file_name=None):
         """Load the saved weights for the model and target model."""
+        if file_name is None:
+            file_name = 'critic-' + str(self.state_shape) + '-features.h5'
         self.model.load_weights(file_name)
         self.target_model.load_weights(file_name)
