@@ -729,7 +729,7 @@ if __name__ == '__main__':
     critic.save_weights()
     file_name = 'win_stats_'
     if completed_episodes != episodes:
-        file_name += 'interrupted_after_' + str(completed_episodes) + '_'
+        file_name += 'interrupted_during_' + str(completed_episodes + 1) + '_'
     file_int = 0
     while isfile(file_name + str(file_int) + '.npy'):
         file_int += 1
