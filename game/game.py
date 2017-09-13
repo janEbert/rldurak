@@ -820,12 +820,12 @@ class Game:
             self.features = np.delete(self.features, player_ix, 0)
             self.feature_lock.release()
             self.indices_from.pop(player_ix)
+            # removed player index from other indices
             removed_from = [self.indices_from[ix][player_ix]
                     for ix in range(self.player_count)]
             self.indices_from = [self.calculate_indices_from(ix)
                     for ix in range(self.player_count)]
             if self.feature_type == 1:
-                # removed player index from other index
                 for ix in range(self.player_count):
                     if removed_from[ix] == 1:
                         self.features[ix, self.deck_size] = -1
