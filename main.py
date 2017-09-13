@@ -1,7 +1,10 @@
+import sys
 import threading
-import queue
+if sys.version_info[0] == 2:
+    import Queue
+elif sys.version_info[0] == 3:
+    import queue
 from random import choice, sample
-from sys import exc_info
 from time import clock
 
 import keras.backend as K
@@ -88,7 +91,7 @@ def main():
             break
         except:
             clear_threads()
-            print('An exception occured: {0}\n'.format(exc_info()[0]))
+            print('An exception occured: {0}\n'.format(sys.exc_info()[0]))
             completed_episodes = n
             break
         if not result:
