@@ -20,7 +20,7 @@ class Game:
 
     def __init__(
             self, names, deck_size=52, hand_size=6,
-            trump_suit=None, only_ais=False, feature_type=1):
+            trump_suit=None, only_ais=False, feature_type=2):
         """Initialize a game of durak with the given names, a card
         deck of the given size and hands of the given size.
 
@@ -72,13 +72,14 @@ class Game:
             # 1 feature for deck size
             #   size of deck
             if self.only_ais:
-                self.features = np.full((self.player_count, deck_size + 3), -3)
+                self.features = np.full((self.player_count, deck_size + 3), -3,
+                        dtype=np.int8)
                 self.features[:, self.deck.bottom_trump.index] = -4
                 self.features[:, deck_size] = -1
                 self.features[:, deck_size + 1] = 0
                 self.features[:, deck_size + 2] = self.deck.size
             else:
-                self.features = np.full(deck_size + 3, -3)
+                self.features = np.full(deck_size + 3, -3, dtype=np.int8)
                 self.features[self.deck.bottom_trump.index] = -4
                 self.features[deck_size] = -1
                 self.features[deck_size + 1] = 0
@@ -103,7 +104,7 @@ class Game:
                         for ix in player_indices]
                         for player_indices in self.indices_from]
                 self.features = np.zeros((self.player_count,
-                        self.after_index + 4))
+                        self.after_index + 4), dtype=np.int8)
                 self.features[:, self.after_index] = -1
                 self.features[:, self.after_index + 1] = \
                         self.deck.bottom_trump.num_value
@@ -111,7 +112,7 @@ class Game:
             else:
                 self.player_indices = [ix * deck_size
                         for ix in self.indices_from_kraudia]
-                self.features = np.zeros(self.after_index + 4)
+                self.features = np.zeros(self.after_index + 4, dtype=np.int8)
                 self.features[self.after_index] = -1
                 self.features[self.after_index + 1] = \
                         self.deck.bottom_trump.num_value
@@ -125,7 +126,7 @@ class Game:
             assert not self.only_ais, ('Game is not configured for non-full '
                     'features and only ais yet!')
             print('Feature type not as well supported as the others!')
-            self.features = np.full(29, -1)
+            self.features = np.full(29, -1, dtype=np.int8)
             self.features[13:26] = -2
             self.features[26] = -1
             self.features[27] = 0

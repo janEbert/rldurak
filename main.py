@@ -5,10 +5,12 @@ if sys.version_info[0] == 2:
     range = xrange
 elif sys.version_info[0] == 3:
     import queue
+from os.path import isfile
 from random import choice, sample
 from time import clock
 
 import keras.backend as K
+from keras.utils import plot_model
 import numpy as np
 import tensorflow as tf
 
@@ -101,6 +103,7 @@ def main():
             break
         durak_ix = names.index(game.players[0].name)
         if game.kraudia_ix < 0:
+            win_stats[n] = 1
             wins += 1
             if verbose:
                 print('Kraudia did not lose!\n')
@@ -379,10 +382,12 @@ def train_from_memory():
         batch = sample(experiences, batch_size)
     else:
         batch = sample(experiences, len(experiences))
-    states = np.asarray([experience[0] for experience in batch])
-    actions = np.asarray([experience[1] for experience in batch])
+    states = np.asarray([experience[0] for experience in batch], dtype=np.int8)
+    actions = np.asarray([experience[1] for experience in batch],
+            dtype=np.int8)
     rewards = np.asarray([experience[2] for experience in batch])
-    new_states = np.asarray([experience[3] for experience in batch])
+    new_states = np.asarray([experience[3] for experience in batch],
+            dtype=np.int8)
     target_qs = critic.target_model.predict([new_states,
             actor.target_model.predict(new_states)], batch_size=len(batch))
     targets = rewards.copy()
@@ -676,7 +681,7 @@ if __name__ == '__main__':
     if feature_type == 1:
         state_shape = deck_size + 3
     elif feature_type == 2:
-        state_shape = 0# TODO
+        state_shape = (len(names) + 2) * deck_size + 4
     else:
         state_shape = 29
     durak_ix = -1
@@ -690,6 +695,7 @@ if __name__ == '__main__':
     experiences = []
     experience_lock = threading.Lock()
     experience_ix = 0
+    win_stats = np.zeros(episodes, dtype=np.int8)
 
     sess = tf.Session(config=tf.ConfigProto())
     K.set_session(sess)
@@ -697,6 +703,10 @@ if __name__ == '__main__':
             alpha_actor, tau_actor, n1_actor, n2_actor)
     critic = critic_m.Critic(sess, state_shape, action_shape, load,
             alpha_critic, tau_critic, n1_critic, n2_critic)
+    plot_model(actor, to_file='actor-' + str(state_shape) + '-features.png',
+            show_shapes=True)
+    plot_model(critic, to_file='critic-' + str(state_shape) + '-features.png',
+            show_shapes=True)
 
     print('\nStarting to play\n')
     start_time = clock()
@@ -712,7 +722,14 @@ if __name__ == '__main__':
             episodes, plural_s, duration, average_duration))
     print('Kraudia won {0}/{1} games which is a win rate of {2:.2f} %'.format(
             wins, completed_episodes, win_rate))
-    print('Saving models...')
+    print('Saving data...')
     actor.save_weights()
     critic.save_weights()
+    file_name = 'win_stats_'
+    if completed_episodes != episodes:
+        file_name += 'interrupted_'
+    file_int = 0
+    while isfile(file_name + str(file_int) + '.npy'):
+        file_int += 1
+    np.save(file_name + str(file_int) + '.npy', win_stats)
     print('Done')
