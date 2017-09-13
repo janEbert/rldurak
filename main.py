@@ -731,5 +731,5 @@ if __name__ == '__main__':
     file_int = 0
     while isfile(file_name + str(file_int) + '.npy'):
         file_int += 1
-    np.save(file_name + str(file_int) + '.npy', win_stats)
+    np.save(file_name + str(file_int) + '.npy', win_stats, allow_pickle=False)
     print('Done')
