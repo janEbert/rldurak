@@ -110,7 +110,9 @@ def main():
         else:
             if verbose:
                 print('Kraudia is the durak...\n')
-        print('Episode {0} ended'.format(n + 1))
+        if n != 0 and n % 100 == 0:
+            print('Episode {0} ended. Win rate: {1:.2f}'.format(n + 1,
+                    win_rate / float(n)))
     return wins, completed_episodes
 
 
@@ -690,7 +692,7 @@ if __name__ == '__main__':
     chi = None
     threads = None
     action_queue = queue.Queue(len(names) * 6)
-    epsilon_step = (epsilon - min_epsilon) / epsilon_count
+    epsilon_step = (epsilon - min_epsilon) / float(epsilon_count)
     min_epsilon += epsilon_step
     experiences = []
     experience_lock = threading.Lock()
@@ -715,8 +717,8 @@ if __name__ == '__main__':
     average_duration = duration
     win_rate = wins * 100
     if completed_episodes > 0:
-        average_duration /= completed_episodes
-        win_rate /= completed_episodes
+        average_duration /= float(completed_episodes)
+        win_rate /= float(completed_episodes)
     print('Finished {0}/{1} episode{2} after {3:.2f} seconds; '
             'average: {4:.2f} seconds per episode'.format(completed_episodes,
             episodes, plural_s, duration, average_duration))
