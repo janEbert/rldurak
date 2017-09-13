@@ -64,7 +64,7 @@ class Game:
             # deck_size features for each card's location
             #   -4 is bottom trump, -3 is unknown, -2 is out of game
             #   and -1 is on field
-            #   >= 0 are indices from Kraudia's position
+            #   >= 0 are indices from the player's position
             # 1 feature for which suit next player could not defend
             #   num_suit of card (-1 if unknown)
             # 1 feature for whether the defending player checks
@@ -100,9 +100,7 @@ class Game:
             self.out_index = self.field_index + deck_size
             self.after_index = self.out_index + deck_size
             if self.only_ais:
-                self.player_indices = [[ix * deck_size
-                        for ix in player_indices]
-                        for player_indices in self.indices_from]
+                self.calculate_feature_indices()
                 self.features = np.zeros((self.player_count,
                         self.after_index + 4), dtype=np.int8)
                 self.features[:, self.after_index] = -1
@@ -110,8 +108,7 @@ class Game:
                         self.deck.bottom_trump.num_value
                 self.features[:, self.after_index + 3] = self.deck.size
             else:
-                self.player_indices = [ix * deck_size
-                        for ix in self.indices_from_kraudia]
+                self.calculate_feature_indices()
                 self.features = np.zeros(self.after_index + 4, dtype=np.int8)
                 self.features[self.after_index] = -1
                 self.features[self.after_index + 1] = \
@@ -395,7 +392,7 @@ class Game:
                 for ix in range(self.player_count):
                     for card in cards:
                         self.features[ix, self.field_index + card.index] = 0
-                        self.features[ix, self.player_indices[ix][
+                        self.features[ix, self.feature_indices[ix][
                                 self.defender_ix] + card.index] = 1
                 self.feature_lock.release()
         elif self.kraudia_ix >= 0:
@@ -409,7 +406,7 @@ class Game:
                 self.feature_lock.acquire()
                 for card in cards:
                     self.features[self.field_index + card.index] = 0
-                    self.features[self.player_indices[self.defender_ix]
+                    self.features[self.feature_indices[self.defender_ix]
                             + card.index] = 1
                 self.feature_lock.release()
             else:
@@ -516,7 +513,7 @@ class Game:
                     if self.deck.size == 0:
                         for ix in range(self.player_count):
                             self.features[ix,
-                                    self.player_indices[ix][player_ix]
+                                    self.feature_indices[ix][player_ix]
                                     + self.deck.bottom_trump.index] = 1
                     self.feature_lock.release()
             elif self.kraudia_ix >= 0:
@@ -545,7 +542,7 @@ class Game:
                         self.features[self.deck.bottom_trump.index] = \
                                 self.indices_from_kraudia[player_ix]
                     elif self.feature_type == 2:
-                        self.features[self.player_indices[player_ix]
+                        self.features[self.feature_indices[player_ix]
                                 + self.deck.bottom_trump.index] = 1
                     else:
                         self.features[13 + self.deck.bottom_trump.num_value] \
@@ -564,8 +561,8 @@ class Game:
                 self.feature_lock.release()
             elif self.feature_type == 2:
                 self.feature_lock.acquire()
+                self.features[:, self.field_index:self.out_index] = 0
                 for card in cards:
-                    self.features[:, self.field_index + card.index] = 0
                     self.features[:, self.out_index + card.index] = 1
                 self.feature_lock.release()
         elif self.kraudia_ix >= 0:
@@ -576,8 +573,8 @@ class Game:
                 self.feature_lock.release()
             elif self.feature_type == 2:
                 self.feature_lock.acquire()
+                self.features[self.field_index:self.out_index] = 0
                 for card in cards:
-                    self.features[self.field_index + card.index] = 0
                     self.features[self.out_index + card.index] = 1
                 self.feature_lock.release()
             else:
@@ -769,6 +766,16 @@ class Game:
         return [self.index_from(x, player_ix)
                 for x in range(self.player_count)]
 
+    def calculate_feature_indices(self):
+        """Calculate where each player's card features start."""
+        if self.only_ais:
+            self.feature_indices = [[ix * self.deck_size
+                    for ix in player_indices]
+                    for player_indices in self.indices_from]
+        else:
+            self.feature_indices = [ix * self.deck_size
+                    for ix in self.indices_from_kraudia]
+
     def update_defender(self, count=1):
         """Increase defender index by count (with wrapping)."""
         for i in range(count):
@@ -807,14 +814,60 @@ class Game:
         elif player_ix == self.kraudia_ix:
             self.kraudia_ix = -1
             return self.ended()
+        # update features
         if self.only_ais:
             self.feature_lock.acquire()
             self.features = np.delete(self.features, player_ix, 0)
             self.feature_lock.release()
+            self.indices_from.pop(player_ix)
+            removed_from = [self.indices_from[ix][player_ix]
+                    for ix in range(self.player_count)]
             self.indices_from = [self.calculate_indices_from(ix)
                     for ix in range(self.player_count)]
+            if self.feature_type == 1:
+                # removed player index from other index
+                for ix in range(self.player_count):
+                    if removed_from[ix] == 1:
+                        self.features[ix, self.deck_size] = -1
+                    self.features[ix, np.where(self.features[ix,
+                            :self.deck_size] > removed_from[ix])] -= 1
+            elif self.feature_type == 2:
+                self.feature_indices.pop(player_ix)
+                for ix in range(self.player_count):
+                    if removed_from[ix] == 1:
+                        self.features[ix, self.after_index] = -1
+                    old_ix = self.feature_indices[ix][player_ix]
+                    if player_ix == self.player_count:
+                        start_ix = self.feature_indices[ix][0]
+                    else:
+                        start_ix = self.feature_indices[ix][player_ix + 1]
+                    to_be_moved = self.features[ix,
+                            start_ix:self.field_index].copy()
+                    self.features[ix, old_ix:self.field_index] = 0
+                    self.features[ix, old_ix:
+                            self.field_index - self.deck_size] = to_be_moved
+                self.calculate_feature_indices()
         elif self.kraudia_ix >= 0:
+            removed_from_kraudia = self.indices_from_kraudia[player_ix]
             self.indices_from_kraudia = self.calculate_indices_from()
+            if self.feature_type == 1:
+                if removed_from_kraudia == 1:
+                    self.features[self.deck_size] = -1
+                self.features[np.where(self.features[:self.deck_size]
+                        > removed_from_kraudia)] -= 1
+            elif self.feature_type == 2:
+                if removed_from_kraudia == 1:
+                    self.features[self.after_index] = -1
+                old_ix = self.feature_indices[player_ix]
+                if player_ix == self.player_count:
+                    start_ix = self.feature_indices[0]
+                else:
+                    start_ix = self.feature_indices[player_ix + 1]
+                to_be_moved = self.features[start_ix:self.field_index].copy()
+                self.features[old_ix:self.field_index] = 0
+                self.features[old_ix:self.field_index - self.deck_size] = \
+                        to_be_moved
+                self.calculate_feature_indices()
         return self.ended()
 
     def will_end(self):
