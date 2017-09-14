@@ -22,7 +22,7 @@ import game.player as player_m
 import game.field as field
 import game.game as game_m
 
-episodes = 10
+episodes = 2
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
@@ -89,7 +89,7 @@ def main():
         else:
             game.defender_ix = durak_ix
         try:
-            main_loop()
+            result = main_loop()
         except KeyboardInterrupt:
             clear_threads()
             clear_queue()
@@ -274,10 +274,10 @@ def main_loop():
                     thread.event.set()
             else:
                 if only_ais or player_ix == game.kraudia_ix:
-                    if not (game.attack_ended()
-                            or game.players[player_ix].checks):
+                    if not game.attack_ended():
                         reward(active_player_indices, player_ix, 0)
-                    else:
+                    elif (game.attack_ended() or player_ix == game.defender_ix
+                            and game.players[player_ix].checks):
                         experience_list.append([(state, action, 1, None),
                                 player_ix])
                 threads[active_player_indices.index(player_ix)].event.set()
