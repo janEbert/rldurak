@@ -47,17 +47,16 @@ class Game:
         self.hand_size = hand_size
         self.only_ais = only_ais
         self.feature_type = feature_type
-        self.kraudia_ix = -1
         self.feature_lock = Lock()
         self.player_count = len(names)
         assert self.player_count > 1 and self.player_count < 8, \
                 'Player count does not make sense'
-        self.players = [self.init_player(ix, name)
-                for ix, name in enumerate(names)]
         if self.only_ais:
+            self.kraudia_ix = -1
             self.indices_from = [self.calculate_indices_from(ix)
                     for ix in range(self.player_count)]
         else:
+            self.kraudia_ix = names.index('Kraudia')
             self.indices_from_kraudia = self.calculate_indices_from()
         self.field = field.Field()
         self.defender_ix = -1
@@ -150,6 +149,8 @@ class Game:
             self.features[26] = -1
             self.features[27] = 0
             self.features[28] = self.deck.size
+        self.players = [self.init_player(ix, name)
+                for ix, name in enumerate(names)]
 
     def init_player(self, ix, name):
         """Initialize a player with the given index and name."""
@@ -162,8 +163,7 @@ class Game:
             elif self.feature_type == 2:
                 for card in new_player.cards:
                     self.features[ix, card.index] = 1
-        elif name == 'Kraudia' and self.kraudia_ix < 0:
-            self.kraudia_ix = ix
+        elif ix == self.kraudia_ix:
             for card in new_player.cards:
                 if self.feature_type == 1:
                     self.features[card.index] = 0
