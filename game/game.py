@@ -863,15 +863,18 @@ class Game:
                     if removed_from[ix] == 1:
                         self.features[ix, self.after_index] = -1
                     old_ix = self.feature_indices[ix][player_ix]
-                    if player_ix == self.player_count:
-                        start_ix = self.feature_indices[ix][0]
+                    if removed_from[ix] == self.player_count:
+                        self.features[ix, old_ix:self.field_index] = 0
                     else:
-                        start_ix = self.feature_indices[ix][player_ix + 1]
-                    to_be_moved = self.features[ix,
-                            start_ix:self.field_index].copy()
-                    self.features[ix, old_ix:self.field_index] = 0
-                    self.features[ix, old_ix:self.field_index
-                            - self.orig_deck_size] = to_be_moved
+                        if player_ix == self.player_count:
+                            start_ix = self.feature_indices[ix][0]
+                        else:
+                            start_ix = self.feature_indices[ix][player_ix + 1]
+                        to_be_moved = self.features[ix,
+                                start_ix:self.field_index].copy()
+                        self.features[ix, old_ix:self.field_index] = 0
+                        self.features[ix, old_ix:self.field_index
+                                - self.orig_deck_size] = to_be_moved
                 self.calculate_feature_indices()
         elif self.kraudia_ix >= 0:
             removed_from_kraudia = self.indices_from_kraudia[player_ix]
@@ -885,14 +888,17 @@ class Game:
                 if removed_from_kraudia == 1:
                     self.features[self.after_index] = -1
                 old_ix = self.feature_indices[player_ix]
-                if player_ix == self.player_count:
-                    start_ix = self.feature_indices[0]
+                if removed_from_kraudia == self.player_count:
+                    self.features[old_ix:self.field_index] = 0
                 else:
-                    start_ix = self.feature_indices[player_ix + 1]
-                to_be_moved = self.features[start_ix:self.field_index].copy()
-                self.features[old_ix:self.field_index] = 0
-                self.features[old_ix:self.field_index
-                        - self.orig_deck_size] = to_be_moved
+                    if player_ix == self.player_count:
+                        start_ix = self.feature_indices[0]
+                    else:
+                        start_ix = self.feature_indices[player_ix + 1]
+                    to_be_moved = self.features[start_ix:self.field_index].copy()
+                    self.features[old_ix:self.field_index] = 0
+                    self.features[old_ix:self.field_index
+                            - self.orig_deck_size] = to_be_moved
                 self.calculate_feature_indices()
         return self.ended()
 
