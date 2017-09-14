@@ -163,6 +163,7 @@ def main_loop():
     while not game.ended():
         active_player_indices = spawn_threads()
         first_attacker_ix = active_player_indices[0]
+        had_checked = {ix: False for ix in active_player_indices}
         while not game.attack_ended():
             if epsilon >= min_epsilon:
                 epsilon -= epsilon_step
@@ -214,20 +215,13 @@ def main_loop():
                     continue
                 else:
                     game.attack(player_ix, [make_card(action)])
-                    if len(threads) != len(active_player_indices):
-                        if game.players[game.defender_ix].checks:
-                            clear_threads()
-                            game.check(game.defender_ix)
-                            spawn_threads()
-                        else:
-                            clear_threads()
-                            spawn_thread()
+                    for ix in active_player_indices[0::2]:
+                        game.uncheck(ix)
             elif action[0] == 1:
                 to_defend, card = make_card(action)
                 game.defend(to_defend, card)
-                if len(threads) != len(active_player_indices):
-                    clear_threads()
-                    spawn_threads()
+                for ix in active_player_indices[0::2]:
+                    game.uncheck(ix)
             elif action[0] == 2:
                 game.push([make_card(action)])
                 action_queue.task_done()
@@ -255,6 +249,7 @@ def main_loop():
                 continue
             elif action[0] == 3:
                 game.check(player_ix)
+                had_checked[player_ix] = True
             if verbose:
                 print(game.field, '\n')
             action_queue.task_done()
@@ -323,6 +318,7 @@ def clear_threads():
         game.uncheck(thread.player_ix)
     del threads[:]
 
+
 def clear_queue():
     """Clear the action queue."""
     global action_queue
@@ -332,6 +328,12 @@ def clear_queue():
         except queue.Empty:
             continue
         action_queue.task_done()
+
+
+def remove_from_had_checked(had_checked, player_ix):
+    update_ix = lambda ix: ix - 1 if player_ix < ix else ix
+    del had_checked[player_ix]
+    return {update_ix(ix): had_checked[ix] for ix in had_checked}
 
 
 def update_experience_list_indices(experience_list, player_ix):
@@ -347,7 +349,7 @@ def complete_experience(experience_list, player_ix, reward):
     """Update the reward for the experience for the given player's
     index, insert the game state into it and store it.
     """
-    pop_ix = -1
+    del_ix = -1
     for i, item in enumerate(experience_list):
         if item[1] == player_ix:
             exp = item[0]
@@ -357,10 +359,10 @@ def complete_experience(experience_list, player_ix, reward):
             else:
                 store_experience((exp[0], exp[1], reward,
                         game.features))
-            pop_ix = i
+            del_ix = i
             break
-    assert pop_ix >= 0, 'Player index not found in experience list'
-    experience_list.pop(pop_ix)
+    assert del_ix >= 0, 'Player index not found in experience list'
+    del experience_list[del_ix]
     return experience_list
 
 
@@ -510,6 +512,7 @@ class ActionReceiver(threading.Thread):
         """Construct an action receiver with the given player index."""
         threading.Thread.__init__(self)
         self.player_ix = player_ix
+        self.ended = False
         self.reward = 1
         self.event = threading.Event()
 
@@ -533,9 +536,10 @@ class ActionReceiver(threading.Thread):
             # attacker
             if game.defender_ix != self.player_ix:
                 defender = game.players[game.defender_ix]
-                while not player.checks and self.possible_actions:
+                while not self.ended:
                     # everything is defended
-                    if not game.field.attack_cards or defender.checks:
+                    if (not game.field.attack_cards or defender.checks)
+                            and not player.checks:
                         self.add_selected_action()
             # defender
             else:
@@ -551,9 +555,10 @@ class ActionReceiver(threading.Thread):
             # attacker
             if game.defender_ix != self.player_ix:
                 defender = game.players[game.defender_ix]
-                while not player.checks and self.possible_actions:
+                while not self.ended:
                     # everything is defended
                     if ((not game.field.attack_cards or defender.checks)
+                            and not player.checks
                             and np.random.random() > psi):
                         self.add_random_action()
             # defender
