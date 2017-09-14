@@ -4,9 +4,9 @@ from threading import Lock
 
 import numpy as np
 
-import game.deck as deck
-import game.player as player_m
-import game.field as field
+import deck
+import player as player_m
+import field as field
 
 if sys.version_info[0] == 2:
     range = xrange

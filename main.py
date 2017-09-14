@@ -699,7 +699,10 @@ if __name__ == '__main__':
     psi = None
     chi = None
     threads = None
-    action_queue = queue.Queue(len(names) * 6)
+    if sys.version_info[0] == 2:
+        action_queue = Queue.Queue(len(names) * 6)
+    elif sys.version_info[0] == 3:
+        action_queue = queue.Queue(len(names) * 6)
     epsilon_step = (epsilon - min_epsilon) / float(epsilon_count)
     min_epsilon += epsilon_step
     experiences = []
@@ -713,10 +716,6 @@ if __name__ == '__main__':
             alpha_actor, tau_actor, n1_actor, n2_actor)
     critic = critic_m.Critic(sess, state_shape, action_shape, load,
             alpha_critic, tau_critic, n1_critic, n2_critic)
-    plot_model(actor, to_file='actor-' + str(state_shape) + '-features.png',
-            show_shapes=True)
-    plot_model(critic, to_file='critic-' + str(state_shape) + '-features.png',
-            show_shapes=True)
 
     print('\nStarting to play\n')
     start_time = clock()
@@ -724,6 +723,10 @@ if __name__ == '__main__':
     duration = clock() - start_time
     average_duration = duration
     win_rate = wins * 100
+    plot_model(actor, to_file='actor-' + str(state_shape) + '-features.png',
+            show_shapes=True)
+    plot_model(critic, to_file='critic-' + str(state_shape) + '-features.png',
+            show_shapes=True)
     if completed_episodes > 0:
         average_duration /= float(completed_episodes)
         win_rate /= float(completed_episodes)

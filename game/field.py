@@ -1,4 +1,4 @@
-import game.deck as deck
+import deck
 
 class Field:
     """A playing field containing the deck, players and cards that are
