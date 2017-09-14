@@ -8,6 +8,7 @@ elif sys.version_info[0] == 3:
 from os.path import isfile
 from random import choice, sample
 from time import clock
+from traceback import print_exc
 
 import keras.backend as K
 from keras.utils import plot_model
@@ -98,6 +99,7 @@ def main():
         except:
             clear_threads()
             print('An exception occured: {0}\n'.format(sys.exc_info()[0]))
+            print_exc()
             completed_episodes = n
             break
         if not result:
