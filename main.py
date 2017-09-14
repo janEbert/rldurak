@@ -50,6 +50,9 @@ win_reward = 70
 loss_reward = -70
 wait_reward = -1
 illegal_action_reward = -100
+# whether the features always contain 52 cards even though less are
+# necessary (so that shape is the same for any amount of cards)
+buffer_features = False
 # how often random bots wait
 # calculated from a normal distribution with the given values
 psi_mu = 0.95
@@ -75,7 +78,7 @@ def main():
         if not only_ais:
             psi = min(0.98, np.random.normal(psi_mu, psi_sigma))
             chi = max(0, np.random.normal(chi_mu, chi_sigma))
-        game = game_m.Game(names, deck_size, hand_size, trump_suit, only_ais)
+        game = create_game()
         reshuffle(hand_size)
         game.kraudia_ix = -1
         if durak_ix < 0:
@@ -116,6 +119,12 @@ def main():
     return wins, completed_episodes
 
 
+def create_game():
+    """Create a new game with the global parameters."""
+    return game_m.Game(names, deck_size, hand_size, trump_suit, feature_type,
+            buffer_features, only_ais)
+
+
 def reshuffle(hand_size):
     """Reshuffle if a player has more than the given hand size minus
     one cards of the same suit (except trump) in their hand.
@@ -128,8 +137,7 @@ def reshuffle(hand_size):
             counts[card.num_suit] += 1
         if (max(counts) >= hand_size
                 and counts[game.deck.num_trump_suit] < hand_size):
-            game = game_m.Game(names, deck_size, hand_size, trump_suit,
-                    only_ais)
+            game = create_game()
             break
     while (max(counts) >= hand_size
             and counts[game.deck.num_trump_suit] < hand_size):
@@ -139,8 +147,7 @@ def reshuffle(hand_size):
                 counts[card.num_suit] += 1
             if (max(counts) >= hand_size
                     and counts[game.deck.num_trump_suit] < hand_size):
-                game = game_m.Game(names, deck_size, hand_size, trump_suit,
-                        only_ais)
+                game = create_game()
                 break
 
 
@@ -676,6 +683,7 @@ if __name__ == '__main__':
     if not only_ais and 'Kraudia' not in names:
         names.append('Kraudia')
     assert len(names) == len(set(names)), 'Names must be unique'
+    assert feature_type != 3, 'Feature type currently not supported'
     if episodes == 1:
         plural_s = ''
     else:

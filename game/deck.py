@@ -84,7 +84,7 @@ class Deck:
     the bottom.
     """
 
-    def __init__(self, size=52, trump_suit=None):
+    def __init__(self, size=52, trump_suit=None, buffer_features=False):
         """Initialize the deck with the lowest cards removed if size
         is less than 52.
         """
@@ -95,7 +95,7 @@ class Deck:
             self.cards_per_suit = size // 4
         else:
             self.cards_per_suit = size // 8
-        self.fill()
+        self.fill(buffer_features)
         if trump_suit is not None:
             assert trump_suit in suits or trump_suit in range(4), \
                     'Trump suit is invalid'
@@ -109,18 +109,22 @@ class Deck:
             self.shuffle()
         self.reveal_trump()
 
-    def fill(self):
+    def fill(self, buffer_features):
         """Fill the deck up to the desired size (unshuffled!).
 
         If size is greater than 52, add duplicate cards.
         """
+        if buffer_features:
+            cards_per_suit = 13
+        else:
+            cards_per_suit = self.cards_per_suit
         if self.size <= 52:
             self.cards = [Card(num_value, num_suit, num_value + num_suit
-                    * self.cards_per_suit) for num_value in range(13)
+                    * cards_per_suit) for num_value in range(13)
                     for num_suit in range(4)][52 - self.size:]
         else:
             self.cards = [Card(num_value, num_suit, num_value + num_suit
-                    * self.cards_per_suit) for num_value in range(13)
+                    * cards_per_suit) for num_value in range(13)
                     for num_suit in range(4)][52 - self.size / 2:]
             self.cards = self.cards + self.cards[:]
 

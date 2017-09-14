@@ -19,8 +19,8 @@ class Game:
     """
 
     def __init__(
-            self, names, deck_size=52, hand_size=6,
-            trump_suit=None, only_ais=False, feature_type=2):
+            self, names, deck_size=52, hand_size=6, trump_suit=None,
+            feature_type=2, buffer_features=False, only_ais=False):
         """Initialize a game of durak with the given names, a card
         deck of the given size and hands of the given size.
 
@@ -36,12 +36,14 @@ class Game:
         3 for a feature vector of constant size with very limited
           information. Also using indices to determine card locations.
         """
+        assert feature_type in [1, 2, 3], 'Feature type must be 1, 2 or 3'
         assert not (deck_size > 52 and feature_type == 2), ('Feature type 2 '
                 'is only supported for deck sizes without duplicates '
                 '(52 or less)')
-        assert feature_type in [1, 2, 3], 'Feature type must be 1, 2 or 3'
-        self.deck_size = deck_size
-        self.deck = deck.Deck(deck_size, trump_suit)
+        self.orig_deck_size = deck_size
+        if buffer_features:
+            self.orig_deck_size = 52
+        self.deck = deck.Deck(deck_size, trump_suit, buffer_features)
         self.hand_size = hand_size
         self.only_ais = only_ais
         self.feature_type = feature_type
@@ -72,18 +74,27 @@ class Game:
             # 1 feature for deck size
             #   size of deck
             if self.only_ais:
-                self.features = np.full((self.player_count, deck_size + 3), -3,
-                        dtype=np.int8)
+                self.features = np.full((self.player_count,
+                        self.orig_deck_size + 3), -3, dtype=np.int8)
                 self.features[:, self.deck.bottom_trump.index] = -4
-                self.features[:, deck_size] = -1
-                self.features[:, deck_size + 1] = 0
-                self.features[:, deck_size + 2] = self.deck.size
+                self.features[:, self.orig_deck_size] = -1
+                self.features[:, self.orig_deck_size + 1] = 0
+                self.features[:, self.orig_deck_size + 2] = self.deck.size
+                if buffer_features:
+                    for num_suit in range(4):
+                        for num_value in range(13 - self.deck.cards_per_suit):
+                            self.features[:, num_value + num_suit * 13] = -2
             else:
-                self.features = np.full(deck_size + 3, -3, dtype=np.int8)
+                self.features = np.full(self.orig_deck_size + 3, -3,
+                        dtype=np.int8)
                 self.features[self.deck.bottom_trump.index] = -4
-                self.features[deck_size] = -1
-                self.features[deck_size + 1] = 0
-                self.features[deck_size + 2] = self.deck.size
+                self.features[self.orig_deck_size] = -1
+                self.features[self.orig_deck_size + 1] = 0
+                self.features[self.orig_deck_size + 2] = self.deck.size
+                if buffer_features:
+                    for num_suit in range(4):
+                        for num_value in range(13 - self.deck.cards_per_suit):
+                            self.features[num_value + num_suit * 13] = -2
         elif feature_type == 2:
             # (player_count + 2) * deck_size features for whether a
             # player has a card, it is on the field or out of the game
@@ -96,9 +107,9 @@ class Game:
             #   binary
             # 1 feature for deck size
             #   size of deck
-            self.field_index = self.player_count * deck_size
-            self.out_index = self.field_index + deck_size
-            self.after_index = self.out_index + deck_size
+            self.field_index = self.player_count * self.orig_deck_size
+            self.out_index = self.field_index + self.orig_deck_size
+            self.after_index = self.out_index + self.orig_deck_size
             if self.only_ais:
                 self.calculate_feature_indices()
                 self.features = np.zeros((self.player_count,
@@ -107,6 +118,12 @@ class Game:
                 self.features[:, self.after_index + 1] = \
                         self.deck.bottom_trump.num_value
                 self.features[:, self.after_index + 3] = self.deck.size
+                if buffer_features:
+                    for num_suit in range(4):
+                        card_ix = lambda num_value: num_value + num_suit * 13
+                        for num_value in range(13 - self.deck.cards_per_suit):
+                            self.features[:, self.out_index
+                                    + card_ix(num_value)] = 1
             else:
                 self.calculate_feature_indices()
                 self.features = np.zeros(self.after_index + 4, dtype=np.int8)
@@ -114,15 +131,20 @@ class Game:
                 self.features[self.after_index + 1] = \
                         self.deck.bottom_trump.num_value
                 self.features[self.after_index + 3] = self.deck.size
+                if buffer_features:
+                    for num_suit in range(4):
+                        card_ix = lambda num_value: num_value + num_suit * 13
+                        for num_value in range(13 - self.deck.cards_per_suit):
+                            self.features[self.out_index
+                                    + card_ix(num_value)] = 1
         else:
             # 13 features for number of cards in both neighbour's hands
             # 13 features for each trump card's location
             # 1 feature for which suit next player could not defend
             # 1 feature for whether the defending player checks
             # 1 feature for deck size
-            assert not self.only_ais, ('Game is not configured for non-full '
-                    'features and only ais yet!')
-            print('Feature type not as well supported as the others!')
+            assert not self.only_ais, ('Game is not configured for feature '
+                    'type 3 and only ais yet!')
             self.features = np.full(29, -1, dtype=np.int8)
             self.features[13:26] = -2
             self.features[26] = -1
@@ -326,7 +348,8 @@ class Game:
             self.feature_lock.acquire()
             if self.feature_type == 1:
                 self.features[self.prev_neighbour(self.defender_ix),
-                        self.deck_size] = self.field.attack_cards[0].num_suit
+                        self.orig_deck_size] = \
+                        self.field.attack_cards[0].num_suit
             elif self.feature_type == 2:
                 self.features[self.prev_neighbour(self.defender_ix),
                         self.after_index] = \
@@ -339,7 +362,7 @@ class Game:
                             and attack_card.suit in attack_suits):
                         if feature_type == 1:
                             self.features[self.prev_neighbour(
-                                    self.defender_ix), self.deck_size] = \
+                                    self.defender_ix), self.orig_deck_size] = \
                                     attack_card.num_suit
                         elif feature_type == 2:
                             self.features[self.prev_neighbour(
@@ -351,7 +374,7 @@ class Game:
                 and self.kraudia_ix >= 0):
             if self.feature_type == 1:
                 self.feature_lock.acquire()
-                self.features[self.deck_size] = \
+                self.features[self.orig_deck_size] = \
                         self.field.attack_cards[0].num_suit
             elif self.feature_type == 2:
                 self.feature_lock.acquire()
@@ -367,7 +390,7 @@ class Game:
                             and defense_card.suit == self.deck.trump_suit
                             and attack_card.suit in attack_suits):
                         if self.feature_type == 1:
-                            self.features[self.deck_size] = \
+                            self.features[self.orig_deck_size] = \
                                     attack_card.num_suit
                         elif self.feature_type == 2:
                             self.features[self.after_index] = \
@@ -434,7 +457,7 @@ class Game:
             if self.only_ais:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
-                    self.features[:, self.deck_size + 1] = 1
+                    self.features[:, self.orig_deck_size + 1] = 1
                     self.feature_lock.release()
                 elif self.feature_type == 2:
                     self.feature_lock.acquire()
@@ -443,7 +466,7 @@ class Game:
             elif self.kraudia_ix >= 0:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
-                    self.features[self.deck_size + 1] = 1
+                    self.features[self.orig_deck_size + 1] = 1
                     self.feature_lock.release()
                 elif self.feature_type == 2:
                     self.feature_lock.acquire()
@@ -465,7 +488,7 @@ class Game:
             if self.only_ais:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
-                    self.features[:, self.deck_size + 1] = 0
+                    self.features[:, self.orig_deck_size + 1] = 0
                     self.feature_lock.release()
                 elif self.feature_type == 2:
                     self.feature_lock.acquire()
@@ -474,7 +497,7 @@ class Game:
             elif self.kraudia_ix >= 0:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
-                    self.features[self.deck_size + 1] = 0
+                    self.features[self.orig_deck_size + 1] = 0
                     self.feature_lock.release()
                 elif self.feature_type == 2:
                     self.feature_lock.acquire()
@@ -497,7 +520,7 @@ class Game:
             if self.only_ais:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
-                    self.features[:, self.deck_size + 2] = self.deck.size
+                    self.features[:, self.orig_deck_size + 2] = self.deck.size
                     for card in cards:
                         self.features[player_ix, card.index] = 0
                     if self.deck.size == 0:
@@ -519,7 +542,7 @@ class Game:
             elif self.kraudia_ix >= 0:
                 if self.feature_type == 1:
                     self.feature_lock.acquire()
-                    self.features[self.deck_size + 2] = self.deck.size
+                    self.features[self.orig_deck_size + 2] = self.deck.size
                 elif self.feature_type == 2:
                     self.feature_lock.acquire()
                     self.features[self.after_index + 3] = self.deck.size
@@ -769,11 +792,11 @@ class Game:
     def calculate_feature_indices(self):
         """Calculate where each player's card features start."""
         if self.only_ais:
-            self.feature_indices = [[ix * self.deck_size
+            self.feature_indices = [[ix * self.orig_deck_size
                     for ix in player_indices]
                     for player_indices in self.indices_from]
         else:
-            self.feature_indices = [ix * self.deck_size
+            self.feature_indices = [ix * self.orig_deck_size
                     for ix in self.indices_from_kraudia]
 
     def update_defender(self, count=1):
@@ -828,9 +851,9 @@ class Game:
             if self.feature_type == 1:
                 for ix in range(self.player_count):
                     if removed_from[ix] == 1:
-                        self.features[ix, self.deck_size] = -1
+                        self.features[ix, self.orig_deck_size] = -1
                     self.features[ix, np.where(self.features[ix,
-                            :self.deck_size] > removed_from[ix])] -= 1
+                            :self.orig_deck_size] > removed_from[ix])] -= 1
             elif self.feature_type == 2:
                 self.feature_indices.pop(player_ix)
                 for ix in range(self.player_count):
@@ -844,16 +867,16 @@ class Game:
                     to_be_moved = self.features[ix,
                             start_ix:self.field_index].copy()
                     self.features[ix, old_ix:self.field_index] = 0
-                    self.features[ix, old_ix:
-                            self.field_index - self.deck_size] = to_be_moved
+                    self.features[ix, old_ix:self.field_index
+                            - self.orig_deck_size] = to_be_moved
                 self.calculate_feature_indices()
         elif self.kraudia_ix >= 0:
             removed_from_kraudia = self.indices_from_kraudia[player_ix]
             self.indices_from_kraudia = self.calculate_indices_from()
             if self.feature_type == 1:
                 if removed_from_kraudia == 1:
-                    self.features[self.deck_size] = -1
-                self.features[np.where(self.features[:self.deck_size]
+                    self.features[self.orig_deck_size] = -1
+                self.features[np.where(self.features[:self.orig_deck_size]
                         > removed_from_kraudia)] -= 1
             elif self.feature_type == 2:
                 if removed_from_kraudia == 1:
@@ -865,8 +888,8 @@ class Game:
                     start_ix = self.feature_indices[player_ix + 1]
                 to_be_moved = self.features[start_ix:self.field_index].copy()
                 self.features[old_ix:self.field_index] = 0
-                self.features[old_ix:self.field_index - self.deck_size] = \
-                        to_be_moved
+                self.features[old_ix:self.field_index
+                        - self.orig_deck_size] = to_be_moved
                 self.calculate_feature_indices()
         return self.ended()
 
