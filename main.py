@@ -307,7 +307,7 @@ def clear_threads():
         thread.event.set()
         thread.join()
         game.uncheck(thread.player_ix)
-    threads.clear()
+    del threads[:]
     while not action_queue.empty():
         try:
             action_queue.get(timeout=1)

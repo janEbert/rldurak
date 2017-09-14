@@ -89,5 +89,5 @@ class Field:
 
     def clear(self):
         """Clear the playing field of cards."""
-        self.attack_cards.clear()
-        self.defended_pairs.clear()
+        del self.attack_cards[:]
+        del self.defended_pairs[:]
