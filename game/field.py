@@ -1,4 +1,9 @@
-import deck
+import sys
+
+if sys.version_info[0] == 2:
+    import deck
+elif sys.version_info[0] == 3:
+    import game.deck as deck
 
 class Field:
     """A playing field containing the deck, players and cards that are

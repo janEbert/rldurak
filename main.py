@@ -81,7 +81,6 @@ def main():
             chi = max(0, np.random.normal(chi_mu, chi_sigma))
         game = create_game()
         reshuffle(hand_size)
-        game.kraudia_ix = -1
         if durak_ix < 0:
             beginner_ix, beginner_card = game.find_beginner()
             if beginner_card == game.deck.bottom_trump:
@@ -90,14 +89,16 @@ def main():
         else:
             game.defender_ix = durak_ix
         try:
-            result = main_loop()
+            main_loop()
         except KeyboardInterrupt:
             clear_threads()
+            clear_queue()
             print('Program was stopped by keyboard interrupt\n')
             completed_episodes = n
             break
         except:
             clear_threads()
+            clear_queue()
             print_exc()
             print('')
             completed_episodes = n
@@ -158,10 +159,9 @@ def main_loop():
     giving rewards.
     """
     global game, threads, action_queue, epsilon
-    player_ix = -1
+    experience_list = []
     while not game.ended():
-        experience_list = []
-        active_player_indices, cleared = spawn_threads()
+        active_player_indices = spawn_threads()
         first_attacker_ix = active_player_indices[0]
         while not game.attack_ended():
             if epsilon >= min_epsilon:
@@ -170,6 +170,7 @@ def main_loop():
                 player_ix, action = action_queue.get(timeout=10)
             except queue.Empty:
                 clear_threads()
+                clear_queue()
                 return False
             game.feature_lock.acquire()
             if only_ais:
@@ -194,7 +195,8 @@ def main_loop():
                     action_queue.task_done()
                     if game.is_winner(player_ix):
                         reward_winner(active_player_indices, player_ix)
-                        cleared = clear_threads()
+                        clear_threads()
+                        clear_queue()
                         if player_ix < first_attacker_ix:
                             first_attacker_ix -= 1
                         elif first_attacker_ix == game.player_count - 1:
@@ -203,7 +205,7 @@ def main_loop():
                                 player_ix)
                         if game.remove_player(player_ix):
                             break
-                        active_player_indices, cleared = spawn_threads()
+                        active_player_indices = spawn_threads()
                     elif (not game.attack_ended()
                             and (only_ais or player_ix == game.kraudia_ix)):
                         reward(active_player_indices, player_ix, 0)
@@ -212,15 +214,27 @@ def main_loop():
                     continue
                 else:
                     game.attack(player_ix, [make_card(action)])
+                    if len(threads) != len(active_player_indices):
+                        if game.players[game.defender_ix].checks:
+                            clear_threads()
+                            game.check(game.defender_ix)
+                            spawn_threads()
+                        else:
+                            clear_threads()
+                            spawn_thread()
             elif action[0] == 1:
                 to_defend, card = make_card(action)
                 game.defend(to_defend, card)
+                if len(threads) != len(active_player_indices):
+                    clear_threads()
+                    spawn_threads()
             elif action[0] == 2:
                 game.push([make_card(action)])
                 action_queue.task_done()
                 if game.is_winner(player_ix):
                     reward_winner(active_player_indices, player_ix)
-                    cleared = clear_threads()
+                    clear_threads()
+                    clear_queue()
                     if player_ix < first_attacker_ix:
                         first_attacker_ix -= 1
                     elif first_attacker_ix == game.player_count - 1:
@@ -231,8 +245,9 @@ def main_loop():
                 else:
                     if only_ais or player_ix == game.kraudia_ix:
                         reward(active_player_indices, player_ix, 0)
-                    cleared = clear_threads()
-                active_player_indices, cleared = spawn_threads()
+                    clear_threads()
+                    clear_queue()
+                active_player_indices = spawn_threads()
                 for thread in threads:
                     thread.event.set()
                 if verbose:
@@ -245,7 +260,8 @@ def main_loop():
             action_queue.task_done()
             if game.is_winner(player_ix):
                 reward_winner(active_player_indices, player_ix)
-                cleared = clear_threads()
+                clear_threads()
+                clear_queue()
                 if player_ix < first_attacker_ix:
                     first_attacker_ix -= 1
                 elif first_attacker_ix == game.player_count - 1:
@@ -253,7 +269,7 @@ def main_loop():
                 update_experience_list_indices(experience_list, player_ix)
                 if game.remove_player(player_ix):
                     break
-                active_player_indices, cleared = spawn_threads()
+                active_player_indices = spawn_threads()
                 for thread in threads:
                     thread.event.set()
             else:
@@ -266,8 +282,8 @@ def main_loop():
                                 player_ix])
                 threads[active_player_indices.index(player_ix)].event.set()
         # attack ended
-        if not cleared:
-            clear_threads()
+        clear_threads()
+        clear_queue()
         experience_list = end_turn(first_attacker_ix, experience_list)
         assert not experience_list, 'An experience has not been completed'
         train_from_memory()
@@ -285,7 +301,7 @@ def spawn_threads():
     threads = [spawn_thread(player_ix) for player_ix in active_player_indices]
     if verbose:
         print('')
-    return active_player_indices, False
+    return active_player_indices
 
 
 def spawn_thread(player_ix):
@@ -298,25 +314,24 @@ def spawn_thread(player_ix):
 
 
 def clear_threads():
-    """Responsibly clear the list of threads and the action queue.
-
-    Return true for a flag showing whether the threads have
-    been cleared.
-    """
-    global game, threads, action_queue
+    """Responsibly clear the list of threads."""
+    global game, threads
     for thread in threads:
         game.check(thread.player_ix)
         thread.event.set()
         thread.join()
         game.uncheck(thread.player_ix)
     del threads[:]
+
+def clear_queue():
+    """Clear the action queue."""
+    global action_queue
     while not action_queue.empty():
         try:
             action_queue.get(timeout=1)
         except queue.Empty:
             continue
         action_queue.task_done()
-    return True
 
 
 def update_experience_list_indices(experience_list, player_ix):
@@ -402,10 +417,12 @@ def train_from_memory():
     target_qs = critic.target_model.predict([new_states,
             actor.target_model.predict(new_states, batch_size=len(batch))],
             batch_size=len(batch))
-    targets = rewards.copy()
+    targets = actions.copy()
     for i in range(len(batch)):
-        if targets[i] != win_reward and targets[i] != loss_reward:
-            targets[i] += gamma * target_qs[i]
+        if rewards[i] != win_reward and rewards[i] != loss_reward:
+            targets[i] = rewards[i]
+        else:
+            targets[i] = rewards[i] + gamma * target_qs[i]
     critic.model.train_on_batch([states, actions], targets)
     predicted_actions = actor.model.predict(states)
     gradients = critic.get_gradients(states, predicted_actions)
@@ -608,7 +625,6 @@ class ActionReceiver(threading.Thread):
         else:
             action = choice(self.possible_actions)
             self.add_action(action)
-        self.get_extended_actions()
         if reward != 1:
             game.feature_lock.acquire()
             if only_ais:
@@ -618,6 +634,7 @@ class ActionReceiver(threading.Thread):
                 store_experience((self.state, action, self.reward,
                         game.features))
             game.feature_lock.release()
+        self.get_extended_actions()
         self.reward = 1
 
     def add_random_action(self):

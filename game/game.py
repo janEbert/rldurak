@@ -4,12 +4,15 @@ from threading import Lock
 
 import numpy as np
 
-import deck
-import player as player_m
-import field as field
-
 if sys.version_info[0] == 2:
+    import deck
+    import player as player_m
+    import field
     range = xrange
+elif sys.version_info[0] == 3:
+    import game.deck as deck
+    import game.player as player_m
+    import game.field as field
 
 
 class Game:
@@ -237,7 +240,7 @@ class Game:
                 for card in cards:
                     self.features[card.index] = -1
                 self.feature_lock.release()
-            elif feature_type == 2:
+            elif self.feature_type == 2:
                 self.feature_lock.acquire()
                 for card in cards:
                     self.features[self.field_index + card.index] = 1
@@ -360,11 +363,11 @@ class Game:
                     if (attack_card.suit != self.deck.trump_suit
                             and defense_card.suit == self.deck.trump_suit
                             and attack_card.suit in attack_suits):
-                        if feature_type == 1:
+                        if self.feature_type == 1:
                             self.features[self.prev_neighbour(
                                     self.defender_ix), self.orig_deck_size] = \
                                     attack_card.num_suit
-                        elif feature_type == 2:
+                        elif self.feature_type == 2:
                             self.features[self.prev_neighbour(
                                     self.defender_ix), self.after_index] = \
                                     attack_card.num_suit
