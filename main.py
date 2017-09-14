@@ -98,8 +98,8 @@ def main():
             break
         except:
             clear_threads()
-            print('An exception occured: {0}\n'.format(sys.exc_info()[0]))
             print_exc()
+            print('')
             completed_episodes = n
             break
         if not result:
@@ -400,7 +400,8 @@ def train_from_memory():
     new_states = np.asarray([experience[3] for experience in batch],
             dtype=np.int8)
     target_qs = critic.target_model.predict([new_states,
-            actor.target_model.predict(new_states)], batch_size=len(batch))
+            actor.target_model.predict(new_states, batch_size=len(batch))],
+            batch_size=len(batch))
     targets = rewards.copy()
     for i in range(len(batch)):
         if targets[i] != win_reward and targets[i] != loss_reward:
@@ -675,10 +676,17 @@ def make_card(action):
 
     Create a tuple of two cards if action is defending.
     """
+    if buffer_features:
+        cards_per_suit = 13
+    else:
+        cards_per_suit = game.deck.cards_per_suit
     if action[0] == 1:
-        return (deck.Card(action[3], action[4]),
-                deck.Card(action[1], action[2]))
-    return deck.Card(action[1], action[2])
+        return (deck.Card(action[3], action[4],
+                action[3] + action[4] * cards_per_suit),
+                deck.Card(action[1], action[2],
+                action[1] + action[2] * cards_per_suit))
+    return deck.Card(action[1], action[2],
+            action[1] + action[2] * cards_per_suit)
 
 
 if __name__ == '__main__':
