@@ -37,6 +37,8 @@ class Critic:
         self.sess.run(tf.global_variables_initializer())
         if load:
             self.load_weights()
+            self.model._make_predict_function()
+            self.target_model._make_predict_function()
 
     def create_model(self):
         """Return a compiled model and the state and action
