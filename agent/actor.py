@@ -39,9 +39,9 @@ class Actor:
                 self.alpha).apply_gradients(gradients)
         self.sess.run(tf.global_variables_initializer())
         if load:
-            self.load_weights()
-            self.model._make_predict_function()
-            self.target_model._make_predict_function()
+            if self.load_weights():
+                self.model._make_predict_function()
+                self.target_model._make_predict_function()
 
     def create_model(self):
         """Return a compiled model."""
@@ -79,5 +79,10 @@ class Actor:
         """Load the saved weights for the model and target model."""
         if file_name is None:
             file_name = 'actor-' + str(self.state_shape) + '-features.h5'
-        self.model.load_weights(file_name)
-        self.target_model.load_weights(file_name)
+        try:
+            self.model.load_weights(file_name)
+            self.target_model.load_weights(file_name)
+        except OSError:
+            print('Actor weights could not be found. No data was loaded!')
+            return False
+        return True

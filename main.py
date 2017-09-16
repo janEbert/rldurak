@@ -22,7 +22,7 @@ import game.player as player_m
 import game.field as field
 import game.game as game_m
 
-episodes = 100
+episodes = 10000
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
