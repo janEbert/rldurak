@@ -51,7 +51,7 @@ class Game:
         self.only_ais = only_ais
         self.feature_type = feature_type
         self.feature_lock = Lock()
-        self.get_actions_lock = Lock()
+        self.get_action_lock = Lock()
         self.player_count = len(names)
         assert self.player_count > 1 and self.player_count < 8, \
                 'Player count does not make sense'
@@ -173,7 +173,7 @@ class Game:
                     self.features[card.index] = 0
                 elif self.feature_type == 2:
                     self.features[card.index] = 1
-                elif card.suit == self.deck.trump_suit:
+                elif card.num_suit == self.deck.num_trump_suit:
                     self.features[13 + card.num_value] = 0
         return new_player
 
@@ -192,7 +192,8 @@ class Game:
                     and mini == 3):
                 break
             for card in player.cards:
-                if card.suit == self.deck.trump_suit and card.num_value < mini:
+                if (card.num_suit == self.deck.num_trump_suit
+                        and card.num_value < mini):
                     mini = card.num_value
                     beginner_ix = ix
                     beginner_card = card
@@ -248,12 +249,12 @@ class Game:
                 self.feature_lock.release()
             else:
                 for card in cards:
-                    if card.suit == self.deck.trump_suit:
+                    if card.num_suit == self.deck.num_trump_suit:
                         self.features[13 + card.num_value] = -1
                 if (attacker_ix == self.next_neighbour()
                         or attacker_ix == self.prev_neighbour()):
                     for card in cards:
-                        if card.suit != self.deck.trump_suit:
+                        if card.num_suit != self.deck.num_trump_suit:
                             self.sub_neighbour_card(card)
 
     def defend(self, to_defend, card):
@@ -262,10 +263,11 @@ class Game:
         assert card in defender.cards, 'Defender does not have the card'
         assert self.field.on_field_attack(to_defend), ('Card to defend is not '
                 'on the field as an attack')
-        is_greater = card.value > to_defend.value
-        assert (is_greater and card.suit == to_defend.suit
-                or card.suit == self.deck.trump_suit), 'Card is too low'
-        if to_defend.suit == self.deck.trump_suit:
+        is_greater = card.num_value > to_defend.num_value
+        assert (is_greater and card.num_suit == to_defend.num_suit
+                or card.num_suit == self.deck.num_trump_suit), \
+                'Card is too low'
+        if to_defend.num_suit == self.deck.num_trump_suit:
             assert is_greater, 'Card is too low'
         defender.defend(to_defend, card)
         self.field.defend(to_defend, card)
@@ -290,11 +292,11 @@ class Game:
                 self.feature_lock.release()
             else:
                 # TODO optimizable
-                if card.suit == self.deck.trump_suit:
+                if card.num_suit == self.deck.num_trump_suit:
                     self.features[13 + card.num_value] = -1
                 if (self.defender_ix == self.next_neighbour()
                         or self.defender_ix == self.prev_neighbour()):
-                    if card.suit != self.deck.trump_suit:
+                    if card.num_suit != self.deck.num_trump_suit:
                         self.sub_neighbour_card(card)
 
     def push(self, cards):
@@ -332,13 +334,13 @@ class Game:
             else:
                 # TODO optimizable
                 for card in cards:
-                    if card.suit == self.deck.trump_suit:
+                    if card.num_suit == self.deck.num_trump_suit:
                         self.features[13 + card.num_value] = -1
                         break
                 if (self.defender_ix == self.next_neighbour()
                         or self.defender_ix == self.prev_neighbour()):
                     for card in cards:
-                        if card.suit != self.deck.trump_suit:
+                        if card.num_suit != self.deck.num_trump_suit:
                             self.sub_neighbour_card(card)
         self.update_defender()
 
@@ -359,11 +361,13 @@ class Game:
                         self.after_index] = \
                         self.field.attack_cards[0].num_suit
             if len(self.field.attack_cards) > 1:
-                attack_suits = [card.suit for card in self.field.attack_cards]
+                attack_suits = [card.num_suit
+                        for card in self.field.attack_cards]
                 for (attack_card, defense_card) in self.field.defended_pairs:
-                    if (attack_card.suit != self.deck.trump_suit
-                            and defense_card.suit == self.deck.trump_suit
-                            and attack_card.suit in attack_suits):
+                    if (attack_card.num_suit != self.deck.num_trump_suit
+                            and defense_card.num_suit
+                            == self.deck.num_trump_suit
+                            and attack_card.num_suit in attack_suits):
                         if self.feature_type == 1:
                             self.features[self.prev_neighbour(
                                     self.defender_ix), self.orig_deck_size] = \
@@ -388,11 +392,12 @@ class Game:
                 self.feature_lock.acquire()
                 self.features[26] = self.field.attack_cards[0].num_suit
             if len(self.field.attack_cards) > 1:
-                attack_suits = [card.suit for card in self.field.attack_cards]
+                attack_suits = [card.num_suit for card in self.field.attack_cards]
                 for (attack_card, defense_card) in self.field.defended_pairs:
-                    if (attack_card.suit != self.deck.trump_suit
-                            and defense_card.suit == self.deck.trump_suit
-                            and attack_card.suit in attack_suits):
+                    if (attack_card.num_suit != self.deck.num_trump_suit
+                            and defense_card.num_suit
+                            == self.deck.num_trump_suit
+                            and attack_card.num_suit in attack_suits):
                         if self.feature_type == 1:
                             self.features[self.orig_deck_size] = \
                                     attack_card.num_suit
@@ -439,13 +444,13 @@ class Game:
             else:
                 # TODO optimizable
                 for card in cards:
-                    if card.suit == self.deck.trump_suit:
+                    if card.num_suit == self.deck.num_trump_suit:
                         self.features[13 + card.num_value] = \
                                 self.indices_from_kraudia[self.defender_ix]
                 if (self.defender_ix == self.prev_neighbour()
                         or self.defender_ix == self.next_neighbour()):
                     for card in cards:
-                        if card.suit != self.deck.trump_suit:
+                        if card.num_suit != self.deck.num_trump_suit:
                             self.features[card.num_value] += 1
         self.update_defender(2)
         return len(cards)
@@ -562,7 +567,7 @@ class Game:
                             self.features[card.index] = 1
                     else:
                         for card in cards:
-                            if card.suit == self.deck.trump_suit:
+                            if card.num_suit == self.deck.num_trump_suit:
                                 self.features[13 + card.num_value] = 0
                 elif self.deck.size == 0:
                     if self.feature_type == 1:
@@ -607,7 +612,7 @@ class Game:
             else:
                 # TODO optimizable
                 for card in cards:
-                    if card.suit == self.deck.trump_suit:
+                    if card.num_suit == self.deck.num_trump_suit:
                         self.features[13 + card.num_value] = -2
 
     def attack_ended(self):
@@ -652,8 +657,7 @@ class Game:
         - numerical value of the card to play (-1 if redundant)
         - numerical suit of the card to play (-1 if redundant)
         - if defending, numerical value of the card to defend (else -1)
-        - if defending, numerical suit of the card to defend
-          (else -1)
+        - if defending, numerical suit of the card to defend (else -1)
         """
         if player_ix is None:
             player_ix = self.kraudia_ix
@@ -661,21 +665,20 @@ class Game:
         actions = []
         player = self.players[player_ix]
         pushed = 0
-        self.get_actions_lock.acquire()
         if player_ix == self.defender_ix:
             # actions as defender
             for to_defend in self.field.attack_cards:
                 for card in player.cards:
-                    is_greater = card.value > to_defend.value
-                    if (is_greater and card.suit == to_defend.suit
-                            or card.suit == self.deck.trump_suit):
-                        if to_defend.suit == self.deck.trump_suit:
+                    is_greater = card.num_value > to_defend.num_value
+                    if (is_greater and card.num_suit == to_defend.num_suit
+                            or card.num_suit == self.deck.num_trump_suit):
+                        if to_defend.num_suit == self.deck.num_trump_suit:
                             if is_greater:
                                 actions.append(
                                         self.defend_action(card, to_defend))
                         else:
                             actions.append(self.defend_action(card, to_defend))
-                    if (pushed < 2 and card.value == to_defend.value
+                    if (pushed < 2 and card.num_value == to_defend.num_value
                             and not self.field.defended_pairs
                             and not self.exceeds_field([None],
                                     self.next_neighbour(player_ix))): 
@@ -693,19 +696,17 @@ class Game:
                 if self.field.is_empty() and is_first_attacker:
                     for card in player.cards:
                         actions.append(self.attack_action(card))
-                    self.get_actions_lock.release()
                     return actions
                 # actions as attacker
-                for field_card in (self.field.attack_cards
-                        + list(chain.from_iterable(
-                        self.field.defended_pairs))):
-                    for card in player.cards:
-                        if card.value == field_card.value:
-                            actions.append(self.attack_action(card))
+                if not self.exceeds_field([None], self.defender_ix):
+                    for field_card in (self.field.attack_cards
+                            + list(chain.from_iterable(
+                            self.field.defended_pairs))):
+                        for card in player.cards:
+                            if card.num_value == field_card.num_value:
+                                actions.append(self.attack_action(card))
             else:
-                self.get_actions_lock.release()
                 return []
-        self.get_actions_lock.release()
         return actions
 
     def attack_action(self, card):

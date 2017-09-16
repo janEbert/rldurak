@@ -20,10 +20,10 @@ class Player:
 
     def push(self, cards):
         """Push the cards to the next player."""
-        suit = cards[0].suit
+        suit = cards[0].num_suit
         for card in cards:
             assert card in self.cards, 'Cannot push with a card not in hand'
-            assert card.suit == suit, 'Cannot push with non-matching suits'
+            assert card.num_suit == suit, 'Cannot push with non-matching suits'
             self.cards.remove(card)
 
     def take(self, cards):

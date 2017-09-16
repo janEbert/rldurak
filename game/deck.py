@@ -76,7 +76,7 @@ class Card:
         return str(self.value) + str(self.suit)
 
     def __repr__(self):
-        return str(self.num_value) + str(self.num_suit)
+        return str(self.num_value) + ' ' +  str(self.num_suit)
 
 
 class Deck:

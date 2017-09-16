@@ -60,13 +60,13 @@ class Field:
         found = [False] * len(cards)
         for i, card in enumerate(cards):
             for att_card in self.attack_cards:
-                if card.value == att_card.value:
+                if card.num_value == att_card.num_value:
                     found[i] = True
                     break
             if not found[i]:
                 for (att_card, def_card) in self.defended_pairs:
-                    if (card.value == att_card.value
-                            or card.value == def_card.value):
+                    if (card.num_value == att_card.num_value
+                            or card.num_value == def_card.num_value):
                         found[i] = True
                         break
         return False not in found

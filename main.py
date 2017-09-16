@@ -22,7 +22,7 @@ import game.player as player_m
 import game.field as field
 import game.game as game_m
 
-episodes = 2
+episodes = 1000
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
@@ -116,8 +116,9 @@ def main():
             if verbose:
                 print('Kraudia is the durak...\n')
         if n != 0 and n % 100 == 0:
-            print('Episode {0} ended. Win rate: {1:.2f}'.format(n + 1,
-                    win_rate / float(n)))
+            print('Episode {0} ended. Total win rate: {1:.2f}. '
+                    'Win rate over last 100 games: {2:.2f}'.format(n + 1,
+                    wins / float(n), np.mean(win_stats[n - 100:n])))
     return wins, completed_episodes
 
 
@@ -202,6 +203,10 @@ def main_loop():
                         last_experiences = remove_from_last_experiences(
                                 last_experiences, player_ix)
                         if game.remove_player(player_ix):
+                            if ((only_ais or game.kraudia_ix == 0)
+                                    and last_experiences[0] is None):
+                                last_experiences[0] = (state,
+                                        game.check_action(), None, None)
                             break
                         active_player_indices = spawn_threads()
                     elif only_ais or player_ix == game.kraudia_ix:
@@ -211,15 +216,30 @@ def main_loop():
                         thread.event.set()
                     continue
                 else:
+                    if game.exceeds_field([None], game.defender_ix):
+                        action_queue.task_done()
+                        threads[active_player_indices.index(
+                                player_ix)].event.set()
+                        continue
                     game.attack(player_ix, [make_card(action)])
                     for ix in active_player_indices[0::2]:
-                        game.uncheck(ix)
+                        if game.players[ix].checks:
+                            game.uncheck(ix)
+                            threads[active_player_indices.index(
+                                    ix)].event.set()
             elif action[0] == 1:
                 to_defend, card = make_card(action)
                 game.defend(to_defend, card)
                 for ix in active_player_indices[0::2]:
-                    game.uncheck(ix)
+                    if game.players[ix].checks:
+                        game.uncheck(ix)
+                        threads[active_player_indices.index(ix)].event.set()
             elif action[0] == 2:
+                if game.exceeds_field([None]):
+                    action_queue.task_done()
+                    threads[active_player_indices.index(
+                            player_ix)].event.set()
+                    continue
                 game.push([make_card(action)])
                 action_queue.task_done()
                 if game.is_winner(player_ix):
@@ -232,6 +252,10 @@ def main_loop():
                     last_experiences = remove_from_last_experiences(
                             last_experiences, player_ix)
                     if game.remove_player(player_ix):
+                        if ((only_ais or game.kraudia_ix == 0)
+                                and last_experiences[0] is None):
+                            last_experiences[0] = (state, game.check_action(),
+                                    None, None)
                         break
                 else:
                     if only_ais or player_ix == game.kraudia_ix:
@@ -239,6 +263,10 @@ def main_loop():
                                 game.features)
                     clear_threads()
                 active_player_indices = spawn_threads()
+                if active_player_indices[2:]:
+                    ix = active_player_indices[2]
+                    if ix not in last_experiences:
+                        last_experiences.update({ix: None})
                 for thread in threads:
                     thread.event.set()
                 if verbose:
@@ -259,6 +287,10 @@ def main_loop():
                 last_experiences = remove_from_last_experiences(
                         last_experiences, player_ix)
                 if game.remove_player(player_ix):
+                    if ((only_ais or game.kraudia_ix == 0)
+                            and last_experiences[0] is None):
+                        last_experiences[0] = (state, game.check_action(),
+                                None, None)
                     break
                 active_player_indices = spawn_threads()
                 for thread in threads:
@@ -274,7 +306,12 @@ def main_loop():
         # attack ended
         clear_threads()
         end_turn(first_attacker_ix, last_experiences)
-        train_from_memory()
+        if verbose:
+            print('Starting to learn from experiences...')
+            train_from_memory()
+            print('Finished learning')
+        else:
+            train_from_memory()
     return True
 
 
@@ -338,7 +375,8 @@ def update_last_experience(last_experiences, player_ix, reward):
     """
     exp = last_experiences[player_ix]
     if only_ais:
-        store_experience((exp[0], exp[1], reward, game.features[player_ix]))
+        store_experience((exp[0], exp[1], reward,
+                game.features[player_ix]))
     else:
         store_experience((exp[0], exp[1], reward, game.features))
     return remove_from_last_experiences(last_experiences, player_ix)
@@ -470,7 +508,6 @@ def end_turn(player_ix, last_experiences):
         if only_ais or player_ix + 1 == game.kraudia_ix:
             last_experiences = update_last_experience(last_experiences,
                     player_ix + 1, 0)
-    assert len(last_experiences) <= 1, 'Some experiences have not been updated'
     if game.field.attack_cards:
         amount = game.take()
         if only_ais or player_ix == game.kraudia_ix:
@@ -488,7 +525,9 @@ def end_turn(player_ix, last_experiences):
                 last_experiences = update_last_experience(last_experiences,
                         player_ix, 0)
             game.update_defender()
-    assert not last_experiences, 'An experience has not been completed'
+    for ix in last_experiences:
+        assert last_experiences[ix] is None, ('An experience has not been '
+                'completed')
 
 
 class ActionReceiver(threading.Thread):
@@ -518,7 +557,8 @@ class ActionReceiver(threading.Thread):
                 while not self.ended:
                     # everything is defended
                     if ((not game.field.attack_cards or defender.checks)
-                            and not player.checks):
+                            and not player.checks
+                            and self.possible_actions):
                         self.add_selected_action()
             # defender
             else:
@@ -554,7 +594,7 @@ class ActionReceiver(threading.Thread):
 
         If the wait time is exceeded, return an empty list.
         """
-        if not self.event.wait(10):
+        if not self.event.wait(1):
             self.possible_actions = []
         self.event.clear()
         self.possible_actions = game.get_actions(self.player_ix) \
@@ -566,7 +606,7 @@ class ActionReceiver(threading.Thread):
 
         If the wait time is exceeded, return an empty list.
         """
-        if not self.event.wait(10):
+        if not self.event.wait(1):
             self.possible_actions = []
         self.event.clear()
         self.possible_actions = game.get_actions(self.player_ix)
@@ -618,13 +658,12 @@ class ActionReceiver(threading.Thread):
         
         Also update the possible actions.
         """
-        if np.random.random() > chi:
+        if np.random.random() > chi and self.possible_actions:
             self.add_action(choice(self.possible_actions))
             self.get_actions()
         else:
             self.add_action(game.check_action())
-            if not self.event.wait(10):
-                self.possible_actions = []
+            self.get_actions()
 
 
 def store_experience(experience):
