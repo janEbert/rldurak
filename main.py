@@ -22,7 +22,7 @@ import game.player as player_m
 import game.field as field
 import game.game as game_m
 
-episodes = 1000
+episodes = 100
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
@@ -117,9 +117,10 @@ def main():
                 print('Kraudia is the durak...\n')
         n_plus_one = n + 1
         if n_plus_one % 100 == 0:
-            print('Episode {0} ended. Total win rate: {1:.2f}. '
-                    'Win rate over last 100 games: {2:.2f}'.format(n_plus_one,
-                    wins / float(n), np.mean(win_stats[n - 99:n_plus_one])))
+            print('Episode {0} ended. Total win rate: {1:.2f} %; win rate '
+                    'over last 100 games: {2} %'.format(n_plus_one,
+                    100 * wins / float(n_plus_one),
+                    np.sum(win_stats[n_plus_one - 100:n_plus_one])))
     return wins, completed_episodes
 
 
