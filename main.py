@@ -26,7 +26,7 @@ episodes = 1000
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
-verbose = True # whether to print game progress
+verbose = False # whether to print game progress
 feature_type = 2 # 1, 2 or (unsupported) 3
 # starting value for how often a random action is taken by AIs
 # linearly anneals min_epsilon in the first epsilon_count actions
@@ -115,10 +115,11 @@ def main():
         else:
             if verbose:
                 print('Kraudia is the durak...\n')
-        if n != 0 and n % 100 == 0:
+        n_plus_one = n + 1
+        if n_plus_one % 100 == 0:
             print('Episode {0} ended. Total win rate: {1:.2f}. '
-                    'Win rate over last 100 games: {2:.2f}'.format(n + 1,
-                    wins / float(n), np.mean(win_stats[n - 100:n])))
+                    'Win rate over last 100 games: {2:.2f}'.format(n_plus_one,
+                    wins / float(n), np.mean(win_stats[n - 99:n_plus_one])))
     return wins, completed_episodes
 
 
