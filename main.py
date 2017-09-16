@@ -172,14 +172,14 @@ def main_loop():
             except queue.Empty:
                 clear_threads()
                 return False
-            if only_ais:
-                state = game.features[player_ix].copy()
-            else:
-                state = game.features.copy()
+            state = game.features.copy()
             if game.players[player_ix].checks or action[0] == 4:
                 action_queue.task_done()
                 if action[0] == 4:
-                    if only_ais or player_ix == game.kraudia_ix:
+                    if only_ais:
+                        store_experience((state[player_ix], action,
+                                wait_reward, state[player_ix]))
+                    elif player_ix == game.kraudia_ix:
                         store_experience((state, action, wait_reward, state))
                     threads[active_player_indices.index(player_ix)].event.set()
                 continue
@@ -204,13 +204,19 @@ def main_loop():
                         last_experiences = remove_from_last_experiences(
                                 last_experiences, player_ix)
                         if game.remove_player(player_ix):
-                            if ((only_ais or game.kraudia_ix == 0)
-                                    and last_experiences[0] is None):
-                                last_experiences[0] = (state,
-                                        game.check_action(), None, None)
+                            if last_experiences[0] is None:
+                                if only_ais:
+                                    last_experiences[0] = (state[0],
+                                            game.check_action(), None, None)
+                                elif game.kraudia_ix == 0:
+                                    last_experiences[0] = (state,
+                                            game.check_action(), None, None)
                             break
                         active_player_indices = spawn_threads()
-                    elif only_ais or player_ix == game.kraudia_ix:
+                    elif only_ais:
+                        last_experiences[player_ix] = (state[player_ix],
+                                action, 0, game.features[player_ix])
+                    elif player_ix == game.kraudia_ix:
                         last_experiences[player_ix] = (state, action, 0,
                                 game.features)
                     for thread in threads:
@@ -253,13 +259,19 @@ def main_loop():
                     last_experiences = remove_from_last_experiences(
                             last_experiences, player_ix)
                     if game.remove_player(player_ix):
-                        if ((only_ais or game.kraudia_ix == 0)
-                                and last_experiences[0] is None):
-                            last_experiences[0] = (state, game.check_action(),
-                                    None, None)
+                        if last_experiences[0] is None:
+                            if only_ais:
+                                last_experiences[0] = (state[0],
+                                        game.check_action(), None, None)
+                            elif game.kraudia_ix == 0:
+                                last_experiences[0] = (state,
+                                        game.check_action(), None, None)
                         break
                 else:
-                    if only_ais or player_ix == game.kraudia_ix:
+                    if only_ais:
+                        last_experiences[player_ix] = (state[player_ix],
+                                action, 0, game.features[player_ix])
+                    elif player_ix == game.kraudia_ix:
                         last_experiences[player_ix] = (state, action, 0,
                                 game.features)
                     clear_threads()
@@ -288,17 +300,20 @@ def main_loop():
                 last_experiences = remove_from_last_experiences(
                         last_experiences, player_ix)
                 if game.remove_player(player_ix):
-                    if ((only_ais or game.kraudia_ix == 0)
-                            and last_experiences[0] is None):
-                        last_experiences[0] = (state, game.check_action(),
-                                None, None)
+                    if last_experiences[0] is None:
+                        if only_ais:
+                            last_experiences[0] = (state[0],
+                                    game.check_action(), None, None)
+                        elif game.kraudia_ix == 0:
+                            last_experiences[0] = (state, game.check_action(),
+                                    None, None)
                     break
                 active_player_indices = spawn_threads()
                 for thread in threads:
                     thread.event.set()
             else:
                 if only_ais:
-                    last_experiences[player_ix] = (state, action, 0,
+                    last_experiences[player_ix] = (state[player_ix], action, 0,
                             game.features[player_ix])
                 elif player_ix == game.kraudia_ix:
                     last_experiences[player_ix] = (state, action, 0,
@@ -306,6 +321,15 @@ def main_loop():
                 threads[active_player_indices.index(player_ix)].event.set()
         # attack ended
         clear_threads()
+        if only_ais:
+            for ix in last_experiences:
+                if last_experiences[ix] is None:
+                    last_experiences[ix] = (state[ix], game.check_action(),
+                            None, None)
+        elif (game.kraudia_ix in last_experiences
+                and last_experiences[game.kraudia_ix] is None):
+            last_experiences[game.kraudia_ix] = (state, game.check_action(),
+                    None, None)
         end_turn(first_attacker_ix, last_experiences)
         if verbose:
             print('Starting to learn from experiences...')
