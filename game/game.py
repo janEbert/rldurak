@@ -51,7 +51,6 @@ class Game:
         self.only_ais = only_ais
         self.feature_type = feature_type
         self.feature_lock = Lock()
-        self.get_action_lock = Lock()
         self.player_count = len(names)
         assert self.player_count > 1 and self.player_count < 8, \
                 'Player count does not make sense'
