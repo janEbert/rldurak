@@ -146,6 +146,8 @@ Another problem is that the action space is very big. There are only five differ
 Also, it is not easy find a general solution that defines the game's state at a given point in time. Because the amount of players can vary, one cannot simply create a binary feature for each card for each player that determines whether the player holds that card. The size of the state vector would change depending on how many players there are. Indexing where a card is located from the agent is sadly not a solution because the neural net cannot approximate a function from that information.
 To find a general state vector for any amount of players, one could, for example, only store the card information for the two neighbouring players since they are of most importance to the agent. Information is lost when doing this but the state definition can be used for any amount of players and cards if the deck has no duplicates. To also have a general state vector for duplicates, the problem can be solved by storing how many of each card the players have.
 
+% TODO real time, multiple agents! credit assignment problem!
+
 \newpage
 
 \section{Architecture}

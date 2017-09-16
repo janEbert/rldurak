@@ -88,7 +88,7 @@ class Deck:
         """Initialize the deck with the lowest cards removed if size
         is less than 52.
         """
-        assert size >= 20 and size <= 104 and size % 4 == 0, \
+        assert size >= 4 and size <= 104 and size % 4 == 0, \
                 'Size does not make sense'
         self.size = size
         if size <= 52:
@@ -101,8 +101,10 @@ class Deck:
                     'Trump suit is invalid'
             if trump_suit in suits:
                 trump_suit = suit_dict[trump_suit]
-            trump_num_value = randint(0, 12)
-            bottom_trump = self.cards.pop(trump_num_value * 4 + trump_suit)
+            # trump_suit is actually trump_num_suit
+            trump_num_value = randint(13 - self.cards_per_suit, 12)
+            bottom_trump = self.cards.pop((trump_num_value - 13
+                    + self.cards_per_suit) * 4 + trump_suit)
             self.shuffle()
             self.cards.append(bottom_trump)
         else:
@@ -119,12 +121,14 @@ class Deck:
         else:
             cards_per_suit = self.cards_per_suit
         if self.size <= 52:
-            self.cards = [Card(num_value, num_suit, num_value + num_suit
-                    * cards_per_suit) for num_value in range(13)
+            self.cards = [Card(num_value, num_suit, num_value - 13
+                    + cards_per_suit + num_suit * cards_per_suit)
+                    for num_value in range(13)
                     for num_suit in range(4)][52 - self.size:]
         else:
-            self.cards = [Card(num_value, num_suit, num_value + num_suit
-                    * cards_per_suit) for num_value in range(13)
+            self.cards = [Card(num_value, num_suit, num_value - 13
+                    + cards_per_suit + num_suit * cards_per_suit)
+                    for num_value in range(13)
                     for num_suit in range(4)][52 - self.size / 2:]
             self.cards = self.cards + self.cards[:]
 

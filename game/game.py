@@ -51,6 +51,7 @@ class Game:
         self.only_ais = only_ais
         self.feature_type = feature_type
         self.feature_lock = Lock()
+        self.get_actions_lock = Lock()
         self.player_count = len(names)
         assert self.player_count > 1 and self.player_count < 8, \
                 'Player count does not make sense'
@@ -616,8 +617,7 @@ class Game:
         """
         defender = self.players[self.defender_ix]
         return (not defender.cards
-                or len(self.field.attack_cards)
-                + len(self.field.defended_pairs) == self.hand_size
+                or len(self.field.defended_pairs) == self.hand_size
                 or self.players[self.prev_neighbour(self.defender_ix)].checks
                 and self.players[self.next_neighbour(self.defender_ix)].checks
                 and defender.checks)
@@ -661,6 +661,7 @@ class Game:
         actions = []
         player = self.players[player_ix]
         pushed = 0
+        self.get_actions_lock.acquire()
         if player_ix == self.defender_ix:
             # actions as defender
             for to_defend in self.field.attack_cards:
@@ -701,7 +702,9 @@ class Game:
                         if card.value == field_card.value:
                             actions.append(self.attack_action(card))
             else:
+                self.get_actions_lock.release()
                 return []
+        self.get_actions_lock.release()
         return actions
 
     def attack_action(self, card):
@@ -842,15 +845,14 @@ class Game:
             return self.ended()
         # update features
         if self.only_ais:
-            self.feature_lock.acquire()
-            self.features = np.delete(self.features, player_ix, 0)
-            self.feature_lock.release()
             del self.indices_from[player_ix]
             # removed player index from other indices
             removed_from = [self.indices_from[ix][player_ix]
                     for ix in range(self.player_count)]
             self.indices_from = [self.calculate_indices_from(ix)
                     for ix in range(self.player_count)]
+            self.feature_lock.acquire()
+            self.features = np.delete(self.features, player_ix, 0)
             if self.feature_type == 1:
                 for ix in range(self.player_count):
                     if removed_from[ix] == 1:
@@ -876,9 +878,11 @@ class Game:
                         self.features[ix, old_ix:self.field_index
                                 - self.orig_deck_size] = to_be_moved
                 self.calculate_feature_indices()
+            self.feature_lock.release()
         elif self.kraudia_ix >= 0:
             removed_from_kraudia = self.indices_from_kraudia[player_ix]
             self.indices_from_kraudia = self.calculate_indices_from()
+            self.feature_lock.acquire()
             if self.feature_type == 1:
                 if removed_from_kraudia == 1:
                     self.features[self.orig_deck_size] = -1
@@ -900,6 +904,7 @@ class Game:
                     self.features[old_ix:self.field_index
                             - self.orig_deck_size] = to_be_moved
                 self.calculate_feature_indices()
+            self.feature_lock.release()
         return self.ended()
 
     def will_end(self):

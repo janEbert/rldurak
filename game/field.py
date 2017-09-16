@@ -24,11 +24,11 @@ class Field:
 
     def __str__(self):
         return ('Attacks: ' + deck.cards_to_string(self.attack_cards)
-                + '\nDefended:' + deck.cards_to_string(self.defended_pairs))
+                + '\nDefended: ' + deck.cards_to_string(self.defended_pairs))
 
     def __repr__(self):
         return ('Attacks: ' + deck.cards_to_string(self.attack_cards, True)
-                + '\nDefended:'
+                + '\nDefended: '
                 + deck.cards_to_string(self.defended_pairs, True))
 
     def attack(self, cards):
