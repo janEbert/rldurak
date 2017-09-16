@@ -481,7 +481,7 @@ def end_turn(player_ix, last_experiences):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
-            game.remove_player(player_ix):
+            game.remove_player(player_ix)
         else:
             game.draw(player_ix)
             if only_ais or player_ix == game.kraudia_ix:

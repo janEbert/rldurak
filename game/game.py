@@ -693,6 +693,7 @@ class Game:
                 if self.field.is_empty() and is_first_attacker:
                     for card in player.cards:
                         actions.append(self.attack_action(card))
+                    self.get_actions_lock.release()
                     return actions
                 # actions as attacker
                 for field_card in (self.field.attack_cards
