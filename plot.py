@@ -20,13 +20,13 @@ def main(win_stats, epsilon_start, min_epsilon, epsilon_episodes, count):
     episodes = np.arange(count, win_stat_count + 1, count)
     plt.plot(episodes, win_stat_means)
     plt.plot(episodes, epsilon_means)
-    plt.legend(['Win rates', 'Epsilons'])
-    plt.xlabel('episodes')
-    plt.ylabel('means of wins and epsilon values over ' + str(count)
+    plt.legend(['Win rate', r'$\epsilon$'])
+    plt.xlabel('Episodes')
+    plt.ylabel(r'Means of wins and $\epsilon$ values over ' + str(count)
             + ' episodes each')
     plt.title('Win rate during learning')
-    plt.savefig(file_name + '.png')
-    plt.savefig(file_name + '.pdf')
+    plt.savefig(file_name + '.png', bbox_inches='tight')
+    plt.savefig(file_name + '.pdf', bbox_inches='tight')
     # plt.show()
 
 
