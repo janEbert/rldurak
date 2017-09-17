@@ -26,7 +26,6 @@
 
 \title{Reinforcement Learning for Durak \\ \medskip \large{Bachelor's Thesis on Reinforcement Learning}}
 %\subtitle{Bachelor's Thesis on Reinforcement Learning}
-\author{Jan Ebert \\  \\ \small{Cognitive Informatics} \\ \small{Faculty of Technology}}
 \date{\today}
 
 \pagenumbering{roman}
@@ -38,7 +37,7 @@
 \setcounter{page}{2}
 \thispagestyle{empty}
 \noindent
-This thesis has been written solely by myself, Jan Ebert. All sources have been referenced.
+This thesis has been written solely by myself, Jan Ebert. All sources used have been cited and referenced.
 
 \begin{abstract}
 \setcounter{page}{3}
@@ -85,7 +84,8 @@ Durak is also notorious for being a game that allows cheating. Players can place
 
 In Wikipedia~\cite{wikidurak}, durak refers to the page ``Games of skill'' in its section ``See also''. With the learning agent, I want to test whether that reference is correct. While there is randomness and luck in the game, the agent should get a higher win rate (non-loss rate) than a casual player. \medskip
 
-The version that I will mostly concentrate on is played with a deck of 52 cards and 6 cards in hand. Pushing and immediate moving up when a player is out is allowed.
+The version that I will mostly concentrate on is a downscaled version played with a deck of 12 cards and 3 cards in hand. %played with a deck of 52 cards and 6 cards in hand.
+Pushing and immediate moving up when a player is out is allowed.
 
 \newpage
 
@@ -116,7 +116,7 @@ A central idea of reinforcement learning is that of temporal-difference learning
 
 A big problem in reinforcement learning is the balance of exploitation against exploration. Exploitation is simply taking the action with the most return associated to it, so the knowledge is exploited. But it is also important to consider other actions and learn that they might offer an even better return than the action suggested by the current policy. That is exploration: Trying out new actions and observing whether they are useful. To solve this problem, often, an $\epsilon$-greedy strategy is applied. The action with the maximum associated return is taken $(1 - \epsilon)$ of the time (the greedy aspect) and a random action is taken with probability $\epsilon$, so $\epsilon$ manages the amount of exploration by the agent. Because of their simplicity and effectiveness, $\epsilon$-greedy strategies are the most used in reinforcement learning. I will also apply an $\epsilon$-greedy strategy.
 
-Learning can be done on- and off-policy. On-policy learning is simply applying the policy that is also learned while in off-policy learning, one policy is applied and its actions taken but another policy is learned. For example, the learned policy could be completely greedy while the one applied is an $\epsilon$-greedy policy. This method also helps with exploration as the applied policy can generate any data that the learned policy then uses to update its assumptions. Learning off-policy is useful to stabilize learning and therefore very important for this thesis (more on that in \hyperref[sec:anns]{section~\ref*{sec:anns}}). \medskip
+Learning can be done on- and off-policy. On-policy learning is simply applying the policy that is also learned while in off-policy learning, one policy is applied and its actions taken but another policy is learned. For example, the learned policy could be completely greedy while the one applied is an $\epsilon$-greedy policy. This method also helps with exploration as the applied policy can generate any data that the learned policy then uses to update its assumptions even though the learned policy would never have received that data if it was also applied. Learning off-policy is useful to stabilize learning and therefore very important for this thesis (more on that in \hyperref[sec:anns]{section~\ref*{sec:anns}}). \medskip
 
 The first parts of this section were notably influenced by the third chapter of the Sutton and Barto book on reinforcement learning~\cite{book}.
 
@@ -129,11 +129,11 @@ For small state and action spaces, every state's action-value function for each 
 It is important that the activations are nonlinear, else, neural networks would just be linear function approximators and lose their unique capabilities.
 Neural networks can be trained by methods of \emph{gradient descent} on an error or loss function.
 
-However, large neural networks were known to not converge for most action-value functions. This changed when the deep Q-network created by DeepMind  Technologies (now Google DeepMind) achieved great results on learning a lot of different Atari games purely by pixel data based on the same architecture~\cite{nature}. There are two very relevant ideas for stabilization. The first is experience replay which means that experience tuples $(a_t, s_t, r_t, s_{t+1})$ are stored in memory and instead of training on the most recent experience, a random batch of experiences is selected. The neural network then trains on that batch to minimize correlations between experiences and improve speed (because most libraries are optimized on batch learning). The second measure taken is that instead of directly training the network, a different target network is used to train the actual network. This improves the consistence of the targets for training because the model does not change as quickly. The target network is only updated to a copy of the actual network every $C$ steps. Sadly, the deep Q-network is not feasible for the task at hand because the network requires discrete actions without parameters (more on that in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}). Luckily, this problem has been solved by the deep deterministic policy gradient~(DDPG) algorithm~\cite{ddpg}, also developed by Google DeepMind, which can operate over continuous action spaces.
+However, large neural networks were known to not converge for most action-value functions. This changed when the deep Q-network created by DeepMind Technologies (now Google DeepMind) achieved great results on learning a lot of different Atari games purely by pixel data based on the same architecture~\cite{nature}. There are two very relevant ideas for stabilization. The first is experience replay which means that experience tuples $(a_t, s_t, r_t, s_{t+1})$ are stored in memory and instead of training on the most recent experience, a random batch of experiences is selected. The neural network then trains on that batch to minimize correlations between experiences and improve speed (because most libraries are optimized on batch learning). The second measure taken is that instead of directly training the network, a different target network is used to train the actual network. This improves the consistence of the targets for training because the model does not change as quickly. The target network is only updated to a copy of the actual network every $C$ steps. Sadly, the deep Q-network is not feasible for the task at hand because the network requires discrete actions without parameters (more on that in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}). Luckily, this problem has been solved by the deep deterministic policy gradient~(DDPG) algorithm~\cite{ddpg}, also developed by Google DeepMind, which can operate over continuous action spaces.
 
 \subsection{Deep Deterministic Policy Gradient}
 
-The DDPG algorithm works by learning off-policy, meaning 
+DDPG is an off-policy algorithm. 
 
 \newpage
 
@@ -143,10 +143,11 @@ The DDPG algorithm works by learning off-policy, meaning
 In durak, there are many different states of the game that can occur. Therefore, the problem cannot be solved using tabular methods. Instead, two artificial neural networks are trained. One calculates which action to take in a given game state, the ``actor'', and one approximates the action-value function so as to give the actor feedback on its decision and help it learn. Therefore, that network is called the ``critic''.
 Another problem is that the action space is very big. There are only five different types of actions -- attacking, defending, pushing, checking (telling the others that you do not want to attack or defend anymore) and simply waiting. However, attacking, defending and pushing have to specify in which way to interact with the game. In the case of attacking and pushing, which card to put on the table needs to be specified. For defending, which card to defend is also necessary information. Those cards are the action's parameters, that is why these actions are called parametrized actions. The actions themselves are discrete but they accept parameters that specify what the action does. The parameters are also discrete and in a given state, there is only a limited number of possible parameters. For the neural network that does not know the game's rules, however, any card could be put anywhere. This problem can be solved simply by giving the agent a big negative reward when it chooses an action that is not allowed. While this approach works, it might also influence other decisions because of the network's generalization capabilities. Given enough time, it should learn to not execute only illegal actions but still, the problem might occur.
 
-Also, it is not easy find a general solution that defines the game's state at a given point in time. Because the amount of players can vary, one cannot simply create a binary feature for each card for each player that determines whether the player holds that card. The size of the state vector would change depending on how many players there are. Indexing where a card is located from the agent is sadly not a solution because the neural net cannot approximate a function from that information.
-To find a general state vector for any amount of players, one could, for example, only store the card information for the two neighbouring players since they are of most importance to the agent. Information is lost when doing this but the state definition can be used for any amount of players and cards if the deck has no duplicates. To also have a general state vector for duplicates, the problem can be solved by storing how many of each card the players have.
+Also, it is not easy find a general solution that defines the game's state at a given point in time. Because the amount of players can vary, one cannot simply create a binary feature for each card for each player that determines whether the player holds that card. The size of the state vector would change depending on how many players there are. Indexing where a card is located from the agent is sadly not a solution because the neural net cannot approximate a function from that information. % TODO really?
+To find a general state vector for any amount of players, one could, for example, only store the card information for the two neighbouring players since they are the most important to the agent. Information is lost when doing this but the state definition can be used for any amount of players and cards if the deck has no duplicates. To also have a general state vector for duplicates, the problem can be solved by storing how many of each card the two players have.
 
 % TODO real time, multiple agents! credit assignment problem!
+Since the game is played in real time and the actions of the other players influence the game state, it is very hard to 
 
 \newpage
 

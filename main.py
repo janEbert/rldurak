@@ -28,11 +28,12 @@ only_ais = False
 load = False # whether to load the models' weights
 verbose = False # whether to print game progress
 feature_type = 2 # 1, 2 or (unsupported) 3
-# starting value for how often a random action is taken by AIs
-# linearly anneals min_epsilon in the first epsilon_count actions
+# epsilon_start is the starting value for how often a random action is
+# taken by AIs
+# linearly anneals min_epsilon in the first epsilon_episodes episodes
 min_epsilon = 0.1
-epsilon = 1 # if not load else min_epsilon
-epsilon_count = 6000
+epsilon_start = 1 # if not load else min_epsilon
+epsilon_episodes = 6000
 # learning rates
 alpha_actor = 0.001
 alpha_critic = 0.001
@@ -73,12 +74,12 @@ trump_suit = 2 # hearts (better not change this for consistency)
 
 def main():
     """Main function for durak."""
-    global durak_ix, game, psi, chi
+    global durak_ix, game, psi, chi, epsilon
     wins = 0
     completed_episodes = episodes
     for n in range(episodes):
         if not only_ais:
-            psi = min(0.98, np.random.normal(psi_mu, psi_sigma))
+            psi = min(0.99, np.random.normal(psi_mu, psi_sigma))
             chi = max(0, np.random.normal(chi_mu, chi_sigma))
         game = create_game()
         reshuffle(hand_size)
@@ -112,9 +113,10 @@ def main():
             wins += 1
             if verbose:
                 print('Kraudia did not lose!\n')
-        else:
-            if verbose:
-                print('Kraudia is the durak...\n')
+        elif verbose:
+            print('Kraudia is the durak...\n')
+        if epsilon >= min_epsilon:
+            epsilon -= epsilon_step
         n_plus_one = n + 1
         if n_plus_one % 100 == 0:
             print('Episode {0} ended. Total win rate: {1:.2f} %; win rate '
@@ -160,14 +162,12 @@ def main_loop():
     """Main loop for receiving and executing actions and
     giving rewards.
     """
-    global game, threads, action_queue, epsilon
+    global game, threads, action_queue
     while not game.ended():
         active_player_indices = spawn_threads()
         first_attacker_ix = active_player_indices[0]
         last_experiences = {ix: None for ix in active_player_indices}
         while not game.attack_ended():
-            if epsilon >= min_epsilon:
-                epsilon -= epsilon_step
             try:
                 player_ix, action = action_queue.get(timeout=10)
             except queue.Empty:
@@ -768,7 +768,8 @@ if __name__ == '__main__':
     chi = None
     threads = None
     action_queue = queue.Queue(len(names) * 6)
-    epsilon_step = (epsilon - min_epsilon) / float(epsilon_count)
+    epsilon = epsilon_start
+    epsilon_step = (epsilon_start - min_epsilon) / float(epsilon_episodes)
     min_epsilon += epsilon_step
     experiences = []
     experience_lock = threading.Lock()
