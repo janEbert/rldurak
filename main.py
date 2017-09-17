@@ -22,7 +22,7 @@ import game.player as player_m
 import game.field as field
 import game.game as game_m
 
-episodes = 10000
+episodes = 100
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
@@ -31,7 +31,7 @@ feature_type = 2 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
 # taken by AIs
 # linearly anneals min_epsilon in the first epsilon_episodes episodes
-min_epsilon = 0.1
+min_epsilon = 1
 epsilon_start = 1 # if not load else min_epsilon
 epsilon_episodes = 6000
 # learning rates
@@ -74,14 +74,15 @@ trump_suit = 2 # hearts (better not change this for consistency)
 
 def main():
     """Main function for durak."""
-    global durak_ix, game, psi, chi, epsilon
+    global psi, chi, epsilon
+    durak_ix = -1
     wins = 0
     completed_episodes = episodes
     for n in range(episodes):
         if not only_ais:
             psi = min(0.99, np.random.normal(psi_mu, psi_sigma))
             chi = max(0, np.random.normal(chi_mu, chi_sigma))
-        game = create_game()
+        create_game()
         reshuffle(hand_size)
         if durak_ix < 0:
             beginner_ix, beginner_card = game.find_beginner()
@@ -108,13 +109,14 @@ def main():
             completed_episodes = n
             break
         durak_ix = names.index(game.players[0].name)
-        if game.kraudia_ix < 0:
-            win_stats[n] = 1
-            wins += 1
-            if verbose:
-                print('Kraudia did not lose!\n')
-        elif verbose:
-            print('Kraudia is the durak...\n')
+        if not only_ais:
+            if game.kraudia_ix < 0:
+                win_stats[n] = 1
+                wins += 1
+                if verbose:
+                    print('Kraudia did not lose!\n')
+            elif verbose:
+                print('Kraudia is the durak...\n')
         if epsilon >= min_epsilon:
             epsilon -= epsilon_step
         n_plus_one = n + 1
@@ -128,7 +130,8 @@ def main():
 
 def create_game():
     """Create a new game with the global parameters."""
-    return game_m.Game(names, deck_size, hand_size, trump_suit, feature_type,
+    global game
+    game = game_m.Game(names, deck_size, hand_size, trump_suit, feature_type,
             buffer_features, only_ais)
 
 
@@ -136,7 +139,6 @@ def reshuffle(hand_size):
     """Reshuffle if a player has more than the given hand size minus
     one cards of the same suit (except trump) in their hand.
     """
-    global game
     hand_size -= 1
     for player in game.players:
         counts = [0] * 4
@@ -144,7 +146,7 @@ def reshuffle(hand_size):
             counts[card.num_suit] += 1
         if (max(counts) >= hand_size
                 and counts[game.deck.num_trump_suit] < hand_size):
-            game = create_game()
+            create_game()
             break
     while (max(counts) >= hand_size
             and counts[game.deck.num_trump_suit] < hand_size):
@@ -154,7 +156,7 @@ def reshuffle(hand_size):
                 counts[card.num_suit] += 1
             if (max(counts) >= hand_size
                     and counts[game.deck.num_trump_suit] < hand_size):
-                game = create_game()
+                create_game()
                 break
 
 
@@ -162,7 +164,6 @@ def main_loop():
     """Main loop for receiving and executing actions and
     giving rewards.
     """
-    global game, threads, action_queue
     while not game.ended():
         active_player_indices = spawn_threads()
         first_attacker_ix = active_player_indices[0]
@@ -366,7 +367,6 @@ def spawn_thread(player_ix):
 
 def clear_threads():
     """Responsibly clear the list of threads."""
-    global game, threads
     for thread in threads:
         thread.ended = True
         game.check(thread.player_ix)
@@ -379,7 +379,6 @@ def clear_threads():
 
 def clear_queue():
     """Clear the action queue."""
-    global action_queue
     while not action_queue.empty():
         try:
             action_queue.get(timeout=1)
@@ -449,7 +448,6 @@ def reward_winner_from_last_experience(last_experiences, player_ix):
 
 def train(state, action, reward, new_state):
     """Train the networks with the given states, action and reward."""
-    global actor, critic
     target_q = critic.target_model.predict([new_state,
             actor.target_model.predict(new_state)])
     if reward == win_reward or reward == loss_reward:
@@ -466,7 +464,6 @@ def train(state, action, reward, new_state):
 
 def train_from_memory():
     """Train the networks with data from memory."""
-    global actor, critic
     if len(experiences) >= batch_size:
         batch = sample(experiences, batch_size)
     else:
@@ -499,7 +496,6 @@ def end_turn(player_ix, last_experiences):
 
     Also give rewards.
     """
-    global game
     if player_ix == game.defender_ix:
         player_ix += 1
     if player_ix == game.player_count:
@@ -568,7 +564,6 @@ class ActionReceiver(threading.Thread):
 
     def run(self):
         """Add all actions for one round."""
-        global game
         player = game.players[self.player_ix]
         if only_ais or self.player_ix == game.kraudia_ix:
             # first attacker
@@ -641,7 +636,6 @@ class ActionReceiver(threading.Thread):
         """Add an action with the belonging player's index to the
         action queue.
         """
-        global action_queue
         action_queue.put((self.player_ix, action))
 
     def add_selected_action(self):
@@ -650,7 +644,6 @@ class ActionReceiver(threading.Thread):
 
         Also update the possible actions and store the experience.
         """
-        global game
         if np.random.random() > epsilon:
             game.feature_lock.acquire()
             if only_ais:
@@ -675,8 +668,7 @@ class ActionReceiver(threading.Thread):
                         state))
                 self.add_action(game.wait_action())
         else:
-            action = choice(self.possible_actions)
-            self.add_action(action)
+            self.add_action(choice(self.possible_actions))
         self.get_extended_actions()
 
     def add_random_action(self):
@@ -698,7 +690,7 @@ def store_experience(experience):
     An experience is a tuple consisting of (state, action, reward,
     new state). This function is threadsafe.
     """
-    global experiences, experience_ix, experience_lock
+    global experience_ix
     experience_lock.acquire()
     if len(experiences) == max_experience_count:
         experiences[experience_ix] = experience
@@ -762,7 +754,6 @@ if __name__ == '__main__':
         state_shape = (len(names) + 2) * deck_size + 4
     else:
         state_shape = 29
-    durak_ix = -1
     game = None
     psi = None
     chi = None
