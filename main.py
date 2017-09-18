@@ -77,6 +77,7 @@ def main():
     global psi, chi, epsilon
     durak_ix = -1
     wins = 0
+    training_counter = 0
     completed_episodes = episodes
     for n in range(episodes):
         if not only_ais:
@@ -92,7 +93,7 @@ def main():
         else:
             game.defender_ix = durak_ix
         try:
-            result = main_loop()
+            result, training_counter_add = main_loop()
         except KeyboardInterrupt:
             clear_threads()
             print('Program was stopped by keyboard interrupt\n')
@@ -104,6 +105,7 @@ def main():
             print('')
             completed_episodes = n
             break
+        training_counter += training_counter_add
         if not result:
             print('No action was retrieved in time. Program stopped\n')
             completed_episodes = n
@@ -125,7 +127,7 @@ def main():
                     'over last 100 games: {2} %'.format(n_plus_one,
                     100 * wins / float(n_plus_one),
                     np.sum(win_stats[n_plus_one - 100:n_plus_one])))
-    return wins, completed_episodes
+    return wins, completed_episodes, training_counter
 
 
 def create_game():
@@ -164,6 +166,7 @@ def main_loop():
     """Main loop for receiving and executing actions and
     giving rewards.
     """
+    training_counter = 0
     while not game.ended():
         active_player_indices = spawn_threads()
         first_attacker_ix = active_player_indices[0]
@@ -173,7 +176,7 @@ def main_loop():
                 player_ix, action = action_queue.get(timeout=10)
             except queue.Empty:
                 clear_threads()
-                return False
+                return False, training_counter
             state = game.features.copy()
             if game.players[player_ix].checks or action[0] == 4:
                 action_queue.task_done()
@@ -333,13 +336,14 @@ def main_loop():
             last_experiences[game.kraudia_ix] = (state, game.check_action(),
                     None, None)
         end_turn(first_attacker_ix, last_experiences)
+        training_counter += 1
         if verbose:
             print('Starting to learn from experiences...')
             train_from_memory()
             print('Finished learning')
         else:
             train_from_memory()
-    return True
+    return True, training_counter
 
 
 def spawn_threads():
@@ -775,7 +779,7 @@ if __name__ == '__main__':
 
     print('\nStarting to play\n')
     start_time = clock()
-    wins, completed_episodes = main()
+    wins, completed_episodes, training_counter = main()
     duration = clock() - start_time
     average_duration = duration
     win_rate = wins * 100
@@ -791,6 +795,8 @@ if __name__ == '__main__':
             episodes, plural_s, duration, average_duration))
     print('Kraudia won {0}/{1} games which is a win rate of {2:.2f} %'.format(
             wins, completed_episodes, win_rate))
+    print('The neural network was trained a total of {0} times'.format(
+            training_counter))
     print('Saving data...')
     if sys.version_info[0] == 2:
         file_name = '/media/data/jebert/win_stats_'
