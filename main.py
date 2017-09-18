@@ -35,7 +35,7 @@ min_epsilon = 0.1
 epsilon_start = 1 # if not load else min_epsilon
 epsilon_episodes = 6000
 # learning rates
-alpha_actor = 0.001
+alpha_actor = 0.0001
 alpha_critic = 0.001
 # update factors
 tau_actor = 0.001
@@ -781,8 +781,8 @@ if __name__ == '__main__':
     win_rate = wins * 100
     # plot_model(actor, to_file='actor-' + str(state_shape) + '-features.png',
     #         show_shapes=True)
-    # plot_model(critic, to_file='critic-' + str(state_shape) + '-features.png',
-    #         show_shapes=True)
+    # plot_model(critic, to_file='critic-' + str(state_shape)
+    #         + '-features.png', show_shapes=True)
     if completed_episodes > 0:
         average_duration /= float(completed_episodes)
         win_rate /= float(completed_episodes)
@@ -792,24 +792,38 @@ if __name__ == '__main__':
     print('Kraudia won {0}/{1} games which is a win rate of {2:.2f} %'.format(
             wins, completed_episodes, win_rate))
     print('Saving data...')
-    file_name = 'win_stats_'
+    if sys.version_info[0] == 2:
+        file_name = '/media/data/jebert/win_stats_'
+    elif sys.version_info[0] == 3:
+        file_name = 'win_stats_'
     if completed_episodes != episodes:
         file_name += 'interrupted_during_' + str(completed_episodes + 1) + '_'
     file_int = 0
     while isfile(file_name + str(file_int) + '.npy'):
         file_int += 1
     try:
-        np.save(file_name + str(file_int) + '.npy', win_stats, allow_pickle=False)
+        np.save(file_name + str(file_int) + '.npy', win_stats,
+                allow_pickle=False)
     except IOError:
         print_exc()
         print('')
+    if sys.version_info[0] == 2:
+        file_name = '/media/data/jebert/actor-' + str(state_shape)
+                + '-features.h5'
+    elif sys.version_info[0] == 3:
+        file_name = 'actor-' + str(state_shape) + '-features.h5'
     try:
-        actor.save_weights()
+        actor.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
+    if sys.version_info[0] == 2:
+        file_name = '/media/data/jebert/critic-' + str(state_shape)
+                + '-features.h5'
+    elif sys.version_info[0] == 3:
+        file_name = 'critic-' + str(state_shape) + '-features.h5'
     try:
-        critic.save_weights()
+        critic.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
