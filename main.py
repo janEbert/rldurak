@@ -793,8 +793,6 @@ if __name__ == '__main__':
     print('Kraudia won {0}/{1} games which is a win rate of {2:.2f} %'.format(
             wins, completed_episodes, win_rate))
     print('Saving data...')
-    actor.save_weights()
-    critic.save_weights()
     file_name = 'win_stats_'
     if completed_episodes != episodes:
         file_name += 'interrupted_during_' + str(completed_episodes + 1) + '_'
@@ -802,4 +800,6 @@ if __name__ == '__main__':
     while isfile(file_name + str(file_int) + '.npy'):
         file_int += 1
     np.save(file_name + str(file_int) + '.npy', win_stats, allow_pickle=False)
+    actor.save_weights()
+    critic.save_weights()
     print('Done')
