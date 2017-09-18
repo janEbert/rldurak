@@ -578,8 +578,7 @@ class ActionReceiver(threading.Thread):
                 while not self.ended:
                     # everything is defended
                     if ((not game.field.attack_cards or defender.checks)
-                            and not player.checks
-                            and self.possible_actions):
+                            and not player.checks):
                         self.add_selected_action()
             # defender
             else:
@@ -667,7 +666,7 @@ class ActionReceiver(threading.Thread):
                 store_experience((state, action, illegal_action_reward,
                         state))
                 self.add_action(game.wait_action())
-        else:
+        elif self.possible_actions:
             self.add_action(choice(self.possible_actions))
         self.get_extended_actions()
 
