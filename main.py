@@ -799,7 +799,19 @@ if __name__ == '__main__':
     file_int = 0
     while isfile(file_name + str(file_int) + '.npy'):
         file_int += 1
-    np.save(file_name + str(file_int) + '.npy', win_stats, allow_pickle=False)
-    actor.save_weights()
-    critic.save_weights()
+    try:
+        np.save(file_name + str(file_int) + '.npy', win_stats, allow_pickle=False)
+    except IOError:
+        print_exc()
+        print('')
+    try:
+        actor.save_weights()
+    except IOError:
+        print_exc()
+        print('')
+    try:
+        critic.save_weights()
+    except IOError:
+        print_exc()
+        print('')
     print('Done')
