@@ -22,7 +22,7 @@ import game.player as player_m
 import game.field as field
 import game.game as game_m
 
-episodes = 100
+episodes = 10000
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
@@ -31,7 +31,7 @@ feature_type = 2 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
 # taken by AIs
 # linearly anneals min_epsilon in the first epsilon_episodes episodes
-min_epsilon = 1
+min_epsilon = 0.1
 epsilon_start = 1 # if not load else min_epsilon
 epsilon_episodes = 6000
 # learning rates
@@ -66,7 +66,7 @@ chi_sigma = 0.1
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
-names = ['Alice', 'Bob']
+names = ['Alice']
 deck_size = 12
 hand_size = 3
 trump_suit = 2 # hearts (better not change this for consistency)
@@ -80,8 +80,8 @@ def main():
     completed_episodes = episodes
     for n in range(episodes):
         if not only_ais:
-            psi = min(0.99, np.random.normal(psi_mu, psi_sigma))
-            chi = max(0, np.random.normal(chi_mu, chi_sigma))
+            psi = min(0.99, max(0, np.random.normal(psi_mu, psi_sigma)))
+            chi = max(0, min(0.99, np.random.normal(chi_mu, chi_sigma)))
         create_game()
         reshuffle(hand_size)
         if durak_ix < 0:

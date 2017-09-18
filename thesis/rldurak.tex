@@ -54,7 +54,7 @@ I adapt the successful deep deterministic policy gradient algorithm to the card 
 
 \section{Introduction}
 
-Reinforcement learning -- and machine learning in general -- is one of the most progressive scientific fields in present time. Learning like a human by trial and error is fascinatingly useful and can have big influences on a lot of very different subjects. Because computers are much faster at calculating than a human and can concentrate solely on the problem at hand, not needing time to, for example, do the dishes, they can find correlations that even experts of certain topics have not discovered yet; simply by magnitude of observations.
+Reinforcement learning -- and machine learning in general -- is one of the most progressive scientific fields in present time. Learning like a human by trial and error is fascinatingly useful and can have large influences in a lot of very different subjects. Because computers are much faster at calculating than a human and can concentrate solely on the problem at hand, not needing time to, for example, do the dishes, they can find correlations that even experts of certain topics have not discovered yet; simply by magnitude of observations.
 
 However, reinforcement learning is also not easy. To try and understand reinforcement learning, I model the Russian card game durak and let an agent learn it. It does that by first playing against players that only execute random actions and then, when it has learned enough to understand the basics of the game, by playing and improving against itself. I want to solve the game without explicitly modeling it by calculations of probabilities. The agent simply plays the game and learns to find regularities and an optimal strategy without further interaction from my side.
 
@@ -84,7 +84,7 @@ Durak is also notorious for being a game that allows cheating. Players can place
 
 In Wikipedia~\cite{wikidurak}, durak refers to the page ``Games of skill'' in its section ``See also''. With the learning agent, I want to test whether that reference is correct. While there is randomness and luck in the game, the agent should get a higher win rate (non-loss rate) than a casual player. \medskip
 
-The version that I will mostly concentrate on is a downscaled version played with a deck of 12 cards and 3 cards in hand. %played with a deck of 52 cards and 6 cards in hand.
+The version that I will mostly concentrate on is a downscaled one played with a deck of 12 cards, 3 cards in hand and only two players.
 Pushing and immediate moving up when a player is out is allowed.
 
 \newpage
@@ -95,22 +95,25 @@ Reinforcement learning is an area of machine learning trying to model human tria
 \begin{equation*}
   R_t \doteq r_{t+1} + \gamma r_{t+2} + \gamma^2 r_{t+3} + ... = \sum_{k = 0}^{\infty} \gamma^k r_{t+k+1}.
 \end{equation*}
-These returns can be used to estimate how good taking a certain action and then following policy $\pi$ is in a given state:
+These returns can be used to estimate how good taking a certain action $a_t$ and then following policy $\pi$ is in a given state $s_t$:
 \begin{equation*}
   q_\pi(s_t, a_t) \doteq \Exp{\pi}{R_t}{s_t, a_t} = \Exp{\pi}{\sum_{k = 0}^{\infty} \gamma^k r_{t+k+1}}{s_t, a_t},
 \end{equation*}
 which is the \emph{action-value function} of the policy $\pi$.
-$q_\pi$ can be estimated from experience and that is one of the key things reinforcement learning accomplishes.
+$q_\pi$ can be estimated from experience, which is key to reinforcement learning.
 Also, $q_\pi$ satisfies a recursive relationship, called the \emph{Bellman equation}:
 \begin{align*}
   q_\pi(s_t, a_t) &= \Exp{\pi}{R_t}{s_t, a_t} \\
   &= \Exp{\pi}{r_{t+1} + \gamma R_{t + 1}}{s_t, a_t} \\
-  &= \Ex{r_{t+1}, s_{t+1}}{r_{t+1} + \gamma \Exp{\pi, a_{t+1}\sim\pi}{R_{t+1}}{s_{t+1}, a_{t+1}}} \\
+  &= \Ex{r_{t+1}, s_{t+1}}{r_{t+1} + \gamma \Exp{\pi, a_{t+1} \sim \pi}{R_{t+1}}{s_{t+1}, a_{t+1}}} \\
   &= \Ex{r_{t+1}, s_{t+1}}{r_{t+1} + \gamma q_\pi(s_{t+1}, a_{t+1}},
 \end{align*}
-which can only be written this way if $\pi$ is deterministic, meaning that $\pi$ does not model probabilities of choosing an action but instead is an explicit action.
+where $a_{t+1} \sim \pi$ is the action taken with respect to $\pi$.
+$q_\pi$ can only be written without the second expectation if $\pi$ is deterministic, meaning that $\pi$ does not model probabilities of choosing an action but instead is an explicit action.
 
 We seek an optimal policy $\pi_*$ that fulfills $q_{\pi_*}(s, a) \doteq \max_\pi q_\pi(s, a)$. If $\pi_*$ is found, the reinforcement learning problem is solved. This optimal policy can only be defined for \emph{finite Markov-Decision-Processes}. A reinforcement learning problem is called a Markov-Decision-Process if a state can summarize all information that matters for the present and future of the problem. It is a finite Markov-Decision-Process if its action and state spaces are finite. However, this is mostly important for the theory of reinforcement learning and while durak can be viewed as a finite Markov-Decision-Process, it is usually okay to not have perfect information. Meaning that we do not need a perfect representation of the game's state to achieve good results. This can be compared to humans playing a card game. It is often enough to track only the most important cards instead of every single one.
+
+The environment providing each state can be modeled, meaning that all probabilities for each new state are calculated and used to plan actions by considering all those possible future states. This is in contrast to simply learning by trial and error on a simulated model. It is much easier to simulate a complex problem than it is to perfectly model its environment. That is why I am going to concentrate on \emph{model-free} algorithms that rely on simulations instead of doing the Sisyphean work of calculating every single probability of durak.
 
 A central idea of reinforcement learning is that of temporal-difference learning. Changes in training are based on the comparison, or the \emph{difference}, of the old state to the new state. The method of only calculating the difference of the old state to the directly following state is called TD(0). TD(1) calculates the difference from the very last state received to the first observed state. In between these two are TD($\lambda$) methods with $0 \leq \lambda \leq 1$ which weigh future states depending on $\lambda$, similar to the discount factor $\gamma$. We will focus only on TD(0) which is the basis of the backups considered in this thesis. Backups are changes during learning based on older values. The new value is \emph{backed up} from the old value.
 
@@ -125,33 +128,60 @@ The first parts of this section were notably influenced by the third chapter of 
 \section{Artificial Neural Networks}
 \label{sec:anns}
 
-For small state and action spaces, every state's action-value function for each action can be stored in a table and retrieved as desired. In real-world applications, however, there are usually a lot of actions possible in a lot of states. State and action spaces can even be continuous with an infinite number of possibilities (only almost infinite in practice since computers cannot represent all real numbers). Storing each value would take absurd amounts of memory and learning each value would take too much of time. So the agent needs to generalize from states it has seen to similar ones. To solve this problem, the action-value function is only approximated instead of fully solved. There are a lot of different function approximators in the field of machine learning, most notably artificial neural networks. Neural networks are universal, nonlinear function approximators, meaning that they can approximate any possible function up to a certain error, based on -- as the name implies -- networks of neurons. A neural network consists of layers of neurons that are usually fully connected in a feed-forward manner. Each neuron sums its incoming activations multiplied by individual weights and then applies a nonlinear activation function on that sum.  % TODO visual
+For small state and action spaces, every state's action-value function for each action can be stored in a table and retrieved as desired. In real-world applications, however, there are usually a lot of actions possible in a lot of states. State and action spaces can even be continuous with an infinite number of possibilities (only almost infinite in practice since computers cannot represent all real numbers). Storing each value would take absurd amounts of memory and learning each value would take too much of time. So the agent needs to generalize from states it has seen to similar ones. To solve this problem, the action-value function is only approximated using parameters $\theta$ instead of fully solved. So $q(s, a | \theta)$ is the action-value function for state s and action a given the parameters $\theta$. There are a lot of different function approximators in the field of machine learning, most notably artificial neural networks. Neural networks are universal, nonlinear function approximators, meaning that they can approximate any possible function up to a certain error, based on -- as the name implies -- networks of neurons. A neural network consists of layers of neurons that are usually fully connected in a feed-forward manner. Each neuron sums its incoming activations multiplied by individual weights and then applies a nonlinear activation function on that sum.  % TODO visual
 It is important that the activations are nonlinear, else, neural networks would just be linear function approximators and lose their unique capabilities.
-Neural networks can be trained by methods of \emph{gradient descent} on an error or loss function.
+Neural networks' weights $\theta$ can be trained by methods of \emph{gradient descent} on an error or loss function. % TODO more on gradient descent?
 
-However, large neural networks were known to not converge for most action-value functions. This changed when the deep Q-network created by DeepMind Technologies (now Google DeepMind) achieved great results on learning a lot of different Atari games purely by pixel data based on the same architecture~\cite{nature}. There are two very relevant ideas for stabilization. The first is experience replay which means that experience tuples $(a_t, s_t, r_t, s_{t+1})$ are stored in memory and instead of training on the most recent experience, a random batch of experiences is selected. The neural network then trains on that batch to minimize correlations between experiences and improve speed (because most libraries are optimized on batch learning). The second measure taken is that instead of directly training the network, a different target network is used to train the actual network. This improves the consistence of the targets for training because the model does not change as quickly. The target network is only updated to a copy of the actual network every $C$ steps. Sadly, the deep Q-network is not feasible for the task at hand because the network requires discrete actions without parameters (more on that in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}). Luckily, this problem has been solved by the deep deterministic policy gradient~(DDPG) algorithm~\cite{ddpg}, also developed by Google DeepMind, which can operate over continuous action spaces.
+However, large neural networks were known to not converge for most action-value functions. This changed when the deep Q-network created by DeepMind Technologies (now Google DeepMind) achieved great results on learning a lot of different Atari games purely by pixel data based on the same architecture~\cite{nature}. There are two very relevant ideas for stabilization. The first is \emph{experience replay} which means that experience tuples $(a_t, s_t, r_t, s_{t+1})$ are stored in memory and instead of training on the most recent experience, a random batch of experiences is selected. The neural network then trains on that batch to minimize correlations between experiences and improve speed (because most libraries are optimized on batch learning). The second measure taken is that instead of directly training the network, a different \emph{target network} is used to train the actual network. This improves the consistence of the targets for training because the model does not change as quickly. The target network is only updated to a copy of the actual network every $C$ steps. Sadly, the deep Q-network is not feasible for the task at hand because the network requires discrete actions without parameters (more on that in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}). Luckily, this problem has been solved by the deep deterministic policy gradient~(DDPG) algorithm~\cite{ddpg}, also developed by Google DeepMind, which can operate over continuous action spaces.
 
 \subsection{Deep Deterministic Policy Gradient}
 
-DDPG is an off-policy algorithm. 
+DDPG is a model-free, off-policy actor-critic algorithm that was designed to solve tasks on the continuous action domain. \emph{Actor-critic} means that instead of learning an action-value function and choosing an action based on that, meaning that the policy is inferred by the action-value estimates, a parameterized policy is learned that selects actions without basing on the action-value function. The action-value function is still important to learn the policy's parameters, so it also needs to be learned even though it is not required for action selection. Thus, there are two functions to learn: One calculates which action to take in a given game state, the ``actor'', and one approximates the action-value function so as to give the actor feedback on its decision and help it learn. Therefore, that function is called the ``critic''.
+
+DDPG uses two artificial neural networks for its approximations, one each for the actor and critic network with the corresponding weight vectors $\theta_A$ and $\theta_C$ and functions $\pi(s_t | \theta_A)$ and $q(s_t, a_t | \theta_C)$. Our goal is to learn a policy that maximizes the expected return from the start distribution $J = \Ex{r_i, s_i; a_i \sim \pi}{R_1}$. The critic learns using the Bellman equation while the actor optimizes the gradient of its policy's performance, the \emph{policy gradient}, defined like so:
+\begin{align*}
+  \nabla_{\theta_A} J &\approx \Exp{s_t \sim \rho_\beta}{\nabla_{\theta_A} q(s_t, a | \theta_C)}{s_t, a = \pi(s_t | \theta_A)} \\
+  &= \Exp{s_t \sim \rho_\beta}{\nabla_a q(s_t, a | \theta_C)}{s_t, a = \pi(s_t) \nabla_{\theta_A} \pi(s_t | \theta_A)},
+\end{align*}
+where $J$ is the start distribution with respect to the actor's parameters and $\rho_\beta$ is the discounted state visitation distribution for policy $\beta$ from which is learned (as DDPG is off-policy).
+
+To stabilize learning, the wo main methods used by the deep Q-network are also applied: Experience replay and having a second target network. The target network, however, has been modified to slowly track the actual network's learned values instead of copying it every $C$ steps.
 
 \newpage
 
 \section{Challenges}
 
 \label{sec:challenges}
-In durak, there are many different states of the game that can occur. Therefore, the problem cannot be solved using tabular methods. Instead, two artificial neural networks are trained. One calculates which action to take in a given game state, the ``actor'', and one approximates the action-value function so as to give the actor feedback on its decision and help it learn. Therefore, that network is called the ``critic''.
-Another problem is that the action space is very big. There are only five different types of actions -- attacking, defending, pushing, checking (telling the others that you do not want to attack or defend anymore) and simply waiting. However, attacking, defending and pushing have to specify in which way to interact with the game. In the case of attacking and pushing, which card to put on the table needs to be specified. For defending, which card to defend is also necessary information. Those cards are the action's parameters, that is why these actions are called parametrized actions. The actions themselves are discrete but they accept parameters that specify what the action does. The parameters are also discrete and in a given state, there is only a limited number of possible parameters. For the neural network that does not know the game's rules, however, any card could be put anywhere. This problem can be solved simply by giving the agent a big negative reward when it chooses an action that is not allowed. While this approach works, it might also influence other decisions because of the network's generalization capabilities. Given enough time, it should learn to not execute only illegal actions but still, the problem might occur.
+In durak, there are many different states of the game that can occur. Therefore, the problem cannot be solved using tabular methods. Instead, two artificial neural networks are trained: One for the the actor and one for the critic as used by the DDPG algorithm.
+Another problem is that the action space is very large. There are only five different types of actions -- attacking, defending, pushing, checking (telling the others that you do not want to attack or defend anymore) and simply waiting. However, attacking, defending and pushing have to specify in which way to interact with the game. In the case of attacking and pushing, which card to put on the table needs to be specified. For defending, which card to defend is also necessary information. Those cards are the action's parameters, that is why these actions are called parameterized actions. The actions themselves are discrete but they accept parameters that specify what the action does. The parameters are also discrete and in a given state, there is only a limited number of possible parameters. For the neural network that does not know the game's rules, however, any card could be put anywhere. This problem can be solved simply by giving the agent a big negative reward when it chooses an action that is not allowed. While this approach works, it takes a lot of time that could be used to learn useful strategies and might also influence other decisions because of the network's generalization capabilities. Given enough time, the agent should learn to not execute illegal actions but still, the problem of maybe not selecting perfectly legal actions may also occur.
 
-Also, it is not easy find a general solution that defines the game's state at a given point in time. Because the amount of players can vary, one cannot simply create a binary feature for each card for each player that determines whether the player holds that card. The size of the state vector would change depending on how many players there are. Indexing where a card is located from the agent is sadly not a solution because the neural net cannot approximate a function from that information. % TODO really?
+Also, it is not easy to find a general solution for the state vector that defines the game's state at a given point in time. Because the amount of players can vary, one cannot simply create a binary feature for each card for each player that determines whether the player holds that card. The size of the state vector would change depending on how many players there are. Indexing where a card is located from the agent is probably not a solution because the neural net may not be able to approximate a function from that information.
 To find a general state vector for any amount of players, one could, for example, only store the card information for the two neighbouring players since they are the most important to the agent. Information is lost when doing this but the state definition can be used for any amount of players and cards if the deck has no duplicates. To also have a general state vector for duplicates, the problem can be solved by storing how many of each card the two players have.
+Because the amount of cards also changes, the vector's size can be buffered to contain the maximum allowed number of cards (52 for a standard deck). Only the cards in the game are tracked while the other ones are seen as out of the game. The generalization capabilities of the neural networks should make this approach possible.
+Except for storing only the neighbour's cards, these ideas ignore that a larger feature vector consumes more memory and will add a lot of computations for each training step which is not feasible for many players and cards.
 
-% TODO real time, multiple agents! credit assignment problem!
-Since the game is played in real time and the actions of the other players influence the game state, it is very hard to 
+Since the game is played in real time and the actions of the other players influence the game state, it is very hard for the agent to understand state changes. For example, assume that the agent defends and checks. The other players now attack with their cards until the maximum allowed number of cards is placed so the attack ends. Now the agent only sees the state of when it checked and then the state when the attack ended. Thus, the agent learns that checking changed much more in the game than it actually did because a lot has happened in between that the agent had no influence on. Also, it is hard to assign which action was actually a good one. A game of durak can be won because of a lot of different decisions. Sometimes it is good to keep a low-value card because it can be used for pushing while in other cases it will be stuck in hand until the very end when it should not be used for attacking because it can easily be defended. It is really hard to put a finger on when an intelligent decision occured because there are many decisions and the actual, ``real'' reward (in the sense that it is not modeled but part of the game) is only received at the very end when it is clear that the agent has won or lost. To heuristically solve this, reward can be given based on the difference in average card value in hand. If the average card value increases after an attack, it is usually positive for the player. This problem of credit assignment cannot easily be solved though. A lot of planning has to go into why a decision is good or why it is not and reward given during the game has to be based on that.
 
 \newpage
 
-\section{Architecture}
+\section{Implementation}
+
+The simulator for games of durak was implemented in Python~\cite{python} for versions 2.7 and 3.5. For the neural networks, the machine learning library Keras~\cite{keras} was used with {TensorFlow}~\cite{tensorflow}  as its backend. I have used Python~3.5 even though TensorFlow for Python~3.6 has been implemented because it is currently labeled unstable. I will refer to players that are not learning as \emph{bots}. The ones that do learn are \emph{agents} like before.
+
+To keep the simulated games as authentic as possible, I use a thread for each player for the real time aspect. The random bots' behaviour is based on probabilities. With a certain probability, the bots wait and with another, they check. These probabilities are calculated each game based on a normal distribution with a given mean and variance and clipped to have values that make sense. For example, a player cannot always wait (because they have to check at some point) but they \emph{can} never check (therefore always playing all their cards). With the exception of when the defending bot has no possible actions, they always check. The game is fully customizable supporting different deck and hand sizes, a variable amount of players, and a fixed trump suit. To make learning easier, I always assign hearts as the trump suit. Also, random bots can be turned off so that only agents play against each other. Assuming that the agent ever gets better than the random bots, this is the next step for it to learn even further.
+
+Cards have a numerical value ranging from 0 to 12 and suit ranging from 0 to 4. For generalization purposes, these values are fixed, even if cards have been removed. (An ace will always have value 12, no matter how many cards have been removed.)
+
+Three % TODO really?
+different types of feature vectors that support size buffering have been implemented according to the explanations in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}.
+As an example to explain the differences between the types, assume that the agent is the player at index 1 holding the ten of spades (T$\spadesuit$), the player at index 0 has a ten of hearts (T$\heartsuit$) and another player is at index 3 holding the ten of diamonds (T$\diamondsuit$). A jack of clubs (J$\clubsuit$) is on the field and a queen of clubs (Q$\clubsuit$) had previously been successfully defended and is out of the game. In the deck, yet to be seen, is a king of clubs (K$\clubsuit$) that no player has any information about. At the bottom of the deck as the revealed trump lies the ace of clubs (A$\clubsuit$). The deck contained 52 cards at the beginning and there are four players in the game, so indices range from 0 to 3. I will also list the size of the vectors for this example, adding 3 extra features that I will discuss later.
+\begin{enumerate}
+  \item Indices from the agent to locate cards; $52 + 3 = 55$~features. The values in our example would be (T$\spadesuit$:~0), (T$\heartsuit$:~3) and (T$\diamondsuit$:~2). Index values wrap around so they are always positive. Cards on the field have value~$-1$, cards out of the game have~$-2$, cards without a known location have~$-3$ and the bottom trump has~$-4$, so the remaining cards' feature values are (J$\clubsuit$:~$-1$), (Q$\clubsuit$:~$-2$), (K$\clubsuit$:~$-3$) and (A$\clubsuit$:~$-4$).
+  \item Binary features for each player for each card; $(4 + 2) \cdot 52  + 1 + 3 = 316$~features. Because the cards are treated seperately for each player, we assign an index to each player at which the cards are stored and use index $F$ to denote where the locations of cards on the field start and $G$ to denote the one for cards out of the game. The locations in the feature vector of the players are ordered like in the first example by indices from the agent. The values in the example are (T$\spadesuit$,~0:~1), (T$\spadesuit$,~$\{1, 2, 3, F, G\}$:~0); (T$\heartsuit$,~3:~1), (T$\heartsuit$,~$\{0, 1, 2, F, G\}$:~0); (T$\diamondsuit$,~2:~1), (T$\diamondsuit$,~$\{0, 1, 3, F, G\}$:~0); (J$\clubsuit$,~$F$:~1), (J$\clubsuit$,~$\{0, 1, 2, 3, G\}$:~0); (Q$\clubsuit$,~$G$:~1), (Q$\clubsuit$,~$\{0, 1, 2, 3, F\}$:~0).
+  The king and ace are simply zero for all indices because they have no known location yet: (K$\clubsuit$,~$\{0, 1, 2, 3, F, G\}$:~0) and (A$\clubsuit$,~$\{0, 1, 2, 3, F, G\}$:~0). To still use the information of the bottom trump, I add an extra feature that stores the numerical value of it, so that feature's value is 12.
+  \item Amount of each card in each neighbour's hand; $(2 + 2) \cdot 52 + 1 + 3 = 212$~features. This is the feature vector supposed to be able to be used for any game of durak defined in this thesis. When no duplicates are in the deck, this is a smaller version of the features of type 2 which is why the values in the example are the same except for the ones for the player with index 3 who is not observed (because they are not a neighbour of the agent). Those values simply do not exist.
+\end{enumerate}
+Now there are three extra features in each vector that give crucial information to the game: One for the numerical suit the next player could not defend, one for whether the defending player checks and one for the amount of cards left in the deck.
 
 \newpage
 
@@ -172,7 +202,23 @@ Since the game is played in real time and the actions of the other players influ
 
 \bibitem{ddpg}
   Lillicrap, Timothy P., Jonathan J. Hunt, et al. ``Continuous control with deep reinforcement learning.'' \emph{arXiv.org}. arXiv:1509.02971v5, 29 Feb. 2016. Web.
-  10 Sep. 2017., \url{arxiv.org/pdf/1509.02971v5}
+  10 Sep. 2017.,
+  \url{arxiv.org/pdf/1509.02971v5}
+
+\bibitem{python}
+  van Rossum, Guido, et al. ``Python.'' \emph{Python}. Python Software Foundation, 20 Feb. 1991. Web.
+  2017.,
+  \url{python.org}
+
+\bibitem{keras}
+  Chollet, Fran\c{c}ois, et al. ``Keras.'' \emph{Keras}. GitHub, 27 Mar. 2015. Web.
+  2017.,
+  \url{github.com/fchollet/keras}
+
+\bibitem{tensorflow}
+  Abadi, Martín, et al. ``TensorFlow: Large-scale machine learning on heterogenous systems.'' \emph{TensorFlow}. Google Brain Team, 9 Nov. 2015. Web.
+  2017.,
+  \url{tensorflow.org}
 
 \bibitem{torcs}
   Lau, Ben. ``Using Keras and Deep Deterministic Policy Gradient to play TORCS.'' \emph{GitHub Pages}. GitHub, 11 Oct. 2016. Web.
