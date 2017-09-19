@@ -756,6 +756,7 @@ if __name__ == '__main__':
     if not only_ais and 'Kraudia' not in names:
         names.append('Kraudia')
     assert len(names) == len(set(names)), 'Names must be unique'
+    assert 0 not in weights, 'Weights cannot be zero'
     assert feature_type != 3, 'Feature type currently not supported'
     if episodes == 1:
         plural_s = ''
