@@ -66,6 +66,9 @@ psi_sigma = 0.1
 # calculated from a normal distribution with the given values
 chi_mu = 0.08
 chi_sigma = 0.1
+# whether the agent waits until all cards are defended before
+# it attacks
+wait_until_defended = True
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
@@ -588,12 +591,18 @@ class ActionReceiver(threading.Thread):
             self.get_extended_actions()
             # attacker
             if game.defender_ix != self.player_ix:
-                defender = game.players[game.defender_ix]
-                while not self.ended:
-                    # everything is defended
-                    if ((not game.field.attack_cards or defender.checks)
-                            and not player.checks):
-                        self.add_selected_action()
+                if wait_until_defended:
+                    defender = game.players[game.defender_ix]
+                    while not self.ended:
+                        # everything is defended
+                        if ((not game.field.attack_cards or defender.checks)
+                                and not player.checks):
+                            self.add_selected_action()
+                else:
+                    while not self.ended:
+                        # everything is defended
+                        if not player.checks:
+                            self.add_selected_action()
             # defender
             else:
                 while not player.checks:
