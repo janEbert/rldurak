@@ -822,6 +822,24 @@ class Game:
         self.features[card.num_value] = max(0,
                 self.features[card.num_value] - 1)
 
+    def hand_means(self, player_ix):
+        """Return the average value of the given player's cards
+        except trump and the average value of the trump cards.
+        """
+        value_avg = 0
+        trump_value_avg = 0
+        count = 0
+        trump_count = 0
+        for card in self.players[player_ix].cards:
+            if card.num_suit != self.deck.num_trump_suit:
+                value_avg += card.num_value
+                count += 1
+            else:
+                trump_value_avg += card.num_value + 13
+                trump_count += 1
+        return value_avg / float(count), \
+                trump_value_avg / float(trump_count), trump_count
+
     def is_winner(self, player_ix):
         """Return whether a player has no cards left and the deck
         is empty.

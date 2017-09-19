@@ -48,10 +48,13 @@ n2_critic = 50
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
-win_reward = 70
-loss_reward = -70
-wait_reward = -1
-illegal_action_reward = -100
+win_reward = 15
+loss_reward = -15
+wait_reward = -0.05
+illegal_action_reward = -100 # if >=0, do not reward illegal actions
+# weights for difference in mean hand card value without trumps,
+# difference in mean trump value and difference in trump amount
+weights = (1, 2, 2)
 # whether the features always contain 52 cards even though less are
 # necessary (so that shape is the same for any amount of cards)
 buffer_features = False
@@ -168,6 +171,11 @@ def main_loop():
     """
     training_counter = 0
     while not game.ended():
+        if only_ais:
+            hand_means = [game.hand_means(ix)
+                    for ix in range(game.player_count)]
+        else:
+            hand_means = game.hand_means(game.kraudia_ix)
         active_player_indices = spawn_threads()
         first_attacker_ix = active_player_indices[0]
         last_experiences = {ix: None for ix in active_player_indices}
@@ -208,14 +216,9 @@ def main_loop():
                             first_attacker_ix = 0
                         last_experiences = remove_from_last_experiences(
                                 last_experiences, player_ix)
+                        if only_ais:
+                            del hand_means[player_ix]
                         if game.remove_player(player_ix):
-                            if last_experiences[0] is None:
-                                if only_ais:
-                                    last_experiences[0] = (state[0],
-                                            game.check_action(), None, None)
-                                elif game.kraudia_ix == 0:
-                                    last_experiences[0] = (state,
-                                            game.check_action(), None, None)
                             break
                         active_player_indices = spawn_threads()
                     elif only_ais:
@@ -263,14 +266,9 @@ def main_loop():
                         first_attacker_ix = 0
                     last_experiences = remove_from_last_experiences(
                             last_experiences, player_ix)
+                    if only_ais:
+                        del hand_means[player_ix]
                     if game.remove_player(player_ix):
-                        if last_experiences[0] is None:
-                            if only_ais:
-                                last_experiences[0] = (state[0],
-                                        game.check_action(), None, None)
-                            elif game.kraudia_ix == 0:
-                                last_experiences[0] = (state,
-                                        game.check_action(), None, None)
                         break
                 else:
                     if only_ais:
@@ -304,14 +302,9 @@ def main_loop():
                     first_attacker_ix = 0
                 last_experiences = remove_from_last_experiences(
                         last_experiences, player_ix)
+                if only_ais:
+                    del hand_means[player_ix]
                 if game.remove_player(player_ix):
-                    if last_experiences[0] is None:
-                        if only_ais:
-                            last_experiences[0] = (state[0],
-                                    game.check_action(), None, None)
-                        elif game.kraudia_ix == 0:
-                            last_experiences[0] = (state, game.check_action(),
-                                    None, None)
                     break
                 active_player_indices = spawn_threads()
                 for thread in threads:
@@ -326,16 +319,17 @@ def main_loop():
                 threads[active_player_indices.index(player_ix)].event.set()
         # attack ended
         clear_threads()
-        if only_ais:
-            for ix in last_experiences:
-                if last_experiences[ix] is None:
-                    last_experiences[ix] = (state[ix], game.check_action(),
-                            None, None)
-        elif (game.kraudia_ix in last_experiences
-                and last_experiences[game.kraudia_ix] is None):
-            last_experiences[game.kraudia_ix] = (state, game.check_action(),
-                    None, None)
-        end_turn(first_attacker_ix, last_experiences)
+        if not game.ended()
+            if only_ais:
+                for ix in last_experiences:
+                    if last_experiences[ix] is None:
+                        last_experiences[ix] = (state[ix], game.check_action(),
+                                None, None)
+            elif (game.kraudia_ix in last_experiences
+                    and last_experiences[game.kraudia_ix] is None):
+                last_experiences[game.kraudia_ix] = (state,
+                        game.check_action(), None, None)
+            end_turn(first_attacker_ix, last_experiences, hand_means)
         training_counter += 1
         if verbose:
             print('Starting to learn from experiences...')
@@ -495,7 +489,7 @@ def train_from_memory():
     critic.train_target()
 
 
-def end_turn(player_ix, last_experiences):
+def end_turn(player_ix, last_experiences, hand_means):
     """End a turn by drawing cards for all attackers and the defender.
 
     Also give rewards.
@@ -520,25 +514,26 @@ def end_turn(player_ix, last_experiences):
             game.draw(player_ix)
             if only_ais or player_ix == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
-                        player_ix, 0)
+                        player_ix, hand_mean_reward(hand_means, player_ix))
             player_ix += 1
         if player_ix == game.player_count:
             player_ix = 0
     if first_attacker_ix != 0 and player_ix == game.player_count - 1:
         game.draw(0)
         if only_ais or game.kraudia_ix == 0:
-            last_experiences = update_last_experience(last_experiences, 0, 0)
+            last_experiences = update_last_experience(last_experiences, 0,
+                    hand_mean_reward(hand_means, 0))
     elif (first_attacker_ix != player_ix + 1
             and player_ix != game.player_count - 1):
         game.draw(player_ix + 1)
         if only_ais or player_ix + 1 == game.kraudia_ix:
             last_experiences = update_last_experience(last_experiences,
-                    player_ix + 1, 0)
+                    player_ix + 1, hand_mean_reward(hand_means, player_ix + 1))
     if game.field.attack_cards:
         amount = game.take()
         if only_ais or player_ix == game.kraudia_ix:
             last_experiences = update_last_experience(last_experiences,
-                    player_ix, -amount)
+                    player_ix, hand_mean_reward(hand_means, player_ix))
     else:
         game.clear_field()
         if game.is_winner(player_ix):
@@ -549,11 +544,26 @@ def end_turn(player_ix, last_experiences):
             game.draw(player_ix)
             if only_ais or player_ix == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
-                        player_ix, 0)
+                        player_ix, hand_mean_reward(hand_means, player_ix))
             game.update_defender()
     for ix in last_experiences:
         assert last_experiences[ix] is None, ('An experience has not been '
                 'completed')
+
+
+def hand_mean_reward(hand_means, player_ix):
+    """Return the mean reward change in the hand of the given player
+    weighting trumps as more important."""
+    if only_ais:
+        avg_before, trump_avg_before, trump_count_before = \
+                hand_means[player_ix]
+    else:
+        avg_before, trump_avg_before, trump_count_before = hand_means
+    avg_after, trump_avg_after, trump_count_after = game.hand_means(player_ix)
+    if trump_avg_after < trump_count_before:
+        return (avg_after - avg_before) * norm_weights[0] \
+                + (trump_avg_after - trump_avg_before) * norm_weights[1] \
+                + (trump_count_after - trump_count_before) * norm_weights[2]
 
 
 class ActionReceiver(threading.Thread):
@@ -586,7 +596,7 @@ class ActionReceiver(threading.Thread):
                         self.add_selected_action()
             # defender
             else:
-                while not player.checks and self.possible_actions:
+                while not player.checks:
                     self.add_selected_action()
         else:
             # first attacker
@@ -609,8 +619,8 @@ class ActionReceiver(threading.Thread):
                 while not player.checks and self.possible_actions:
                     if np.random.random() > psi:
                         self.add_random_action()
-        if not player.checks:
-            self.add_action(game.check_action())
+                if not player.checks:
+                    self.add_action(game.check_action())
 
     def get_extended_actions(self):
         """Wait until the game is updated and return a list of possible
@@ -666,7 +676,7 @@ class ActionReceiver(threading.Thread):
             action = tuple(action)
             if action in self.possible_actions:
                 self.add_action(action)
-            else:
+            elif illegal_action_reward < 0:
                 store_experience((state, action, illegal_action_reward,
                         state))
                 self.add_action(game.wait_action())
@@ -757,6 +767,10 @@ if __name__ == '__main__':
         state_shape = (len(names) + 2) * deck_size + 4
     else:
         state_shape = 29
+    weight_sum = weights[0] + weights[1] + weights[2]
+    norm_weights = (weight_sum / float(weights[0] * 12),
+            weight_sum / float(weights[1] * 25),
+            weight_sum / float(weights[2] * hand_size))
     game = None
     psi = None
     chi = None
