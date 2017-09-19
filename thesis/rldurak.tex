@@ -37,7 +37,16 @@
 \setcounter{page}{2}
 \thispagestyle{empty}
 \noindent
-This thesis has been written solely by myself, Jan Ebert. All sources used have been cited and referenced.
+\textbf{Declaration of Authorship} \medskip
+
+\noindent
+This thesis and the corresponding code have been written solely by myself, Jan Ebert. All sources used have been cited and referenced. \bigskip
+
+\noindent
+\makebox[3cm]{\hrulefill} \hspace{0.2cm} \makebox[4cm]{\hrulefill}
+
+\noindent
+\makebox[3cm][l]{\textit{Signature}} \hspace{0.2cm} \makebox[4cm][l]{\textit{Place and date}}
 
 \begin{abstract}
 \setcounter{page}{3}
@@ -71,10 +80,10 @@ Durak, like most older card games, can have a lot of variations, starting with t
 The goal of the game is to get rid of one's cards so as not to be the durak (Russian: Дурáк, meaning ``fool''). First, a deck is shuffled and each player is dealt six cards (or, for example, only five if there are not enough cards -- durak is very flexible) and one card is laid on the table for everyone to see. This is the card determining the trump suit for the current game. The deck is placed on the open card as a talon. The revealed card is part of the talon, so the last card drawn is always a trump.
 There are two phases in the game: When the talon is not empty, players redraw cards from it and can not yet win. When it has been completely drawn, players can start emptying their hands and ultimately win. However, this is not exactly correct, as in durak, there is no winner, only a loser. I will, however, use the term winner for ``not loser''. \medskip
 
-The player with the lowest trump begins the game (if there are duplicates and several players have the lowest trump, the next lowest trump could be taken instead). They attack with a card of their choice that the next player in clockwise order then has to defend by placing a card of the same suit with a higher value onto it. The defending player can also use a trump to defend any card except another trump with a higher value. The defender's neighbours, the first and second attacker, can place any card whose value is already on the table as another attack (so the attackers can also instantly place two or more cards of the same value on the table). They can do this until there are either six (or, depending on the hand size, another value) cards on the table or as many cards as the defender has remaining in his hand. In classic durak, only five cards can be placed before the first successful defense but I will do without this rule.
+The player with the lowest trump begins the game (if there are duplicates and several players have the lowest trump, the next lowest trump could be taken instead). They attack with a card of their choice that the next player in clockwise order then has to defend by placing a card of the same suit with a higher value onto it. The defending player can also use a trump to defend any card except another trump with a higher value. The defender's neighbours, the first and second attacker, can place any card whose value is already on the table as another attack (so the attackers can also instantly place two or more cards of the same value on the table). They can do this until there are either six (or, depending on the hand size, another value) attack cards on the table or as many attack cards as the defender has cards remaining in his hand. In classic durak, only five cards can be placed before the first successful defense but I will do without this rule.
 
-If the defense is successful, that means that no attacker can or wants to put another card as an attack, all cards on the table are removed and the players draw from the talon in order of attackers with the defender always drawing last. The defender then attacks the next player.
-If the defending player cannot defend all cards, they must pick up every card on the table and cannot start attacking the next round. Instead, the second attacker begins after the players drew cards like before.
+If the defense is successful, that means that no attacker can or wants to put another card as an attack (they \emph{check}), all cards on the table are removed and the players draw from the talon in order of attackers with the defender always drawing last. The defender then attacks the next player.
+If the defending player cannot defend all cards, they must pick up every card on the table and cannot start attacking the next round. Instead, the player coming after the defender begins after the players drew cards like before. When the defender signals that they cannot defend (this is also checking), the attackers can still place (legal) cards that the defender also has to take. Like usual, the amount of attack cards cannot exceed the hand size or the amount of cards in the defender's hand.
 When a player has no cards left, they are out of the game and cannot become durak. In most versions, the player coming before them only takes the finished player's place after an attack has ended but in my version, they immediately move up.
 Another rule that is not in classic durak is pushing. Pushing means that, when no card has been defended, the defender can put a card of the same value as the attacking card (or cards) next to it (instead of covering it) and \emph{push} the attack to the next player.
 
@@ -82,7 +91,7 @@ The last player with cards in hand is the loser and receives the title of ``dura
 
 Durak is also notorious for being a game that allows cheating. Players can place anything they want on the table. Even if anybody notices their cheating, there is no penalty -- they just have to take the card back in hand. While this is great for teaching new players the rules of the game, a learning agent would be distracted by it so I will only focus on ``fair'' durak.
 
-In Wikipedia~\cite{wikidurak}, durak refers to the page ``Games of skill'' in its section ``See also''. With the learning agent, I want to test whether that reference is correct. While there is randomness and luck in the game, the agent should get a higher win rate (non-loss rate) than a casual player. \medskip
+In Wikipedia~\cite{wikidurak}, durak refers to the page ``Games of skill'' in its section ``See also''. With the learning agent, I want to test whether that reference is correct. While there is randomness and luck involved in the outcome of a game, the agent should get a higher win rate (non-loss rate) than players acting at random. \medskip
 
 The version that I will mostly concentrate on is a downscaled one played with a deck of 12 cards, 3 cards in hand and only two players.
 Pushing and immediate moving up when a player is out is allowed.
@@ -123,14 +132,12 @@ Learning can be done on- and off-policy. On-policy learning is simply applying t
 
 The first parts of this section were notably influenced by the third chapter of the Sutton and Barto book on reinforcement learning~\cite{book}.
 
-\newpage
-
-\section{Artificial Neural Networks}
+\subsection{Artificial Neural Networks}
 \label{sec:anns}
 
 For small state and action spaces, every state's action-value function for each action can be stored in a table and retrieved as desired. In real-world applications, however, there are usually a lot of actions possible in a lot of states. State and action spaces can even be continuous with an infinite number of possibilities (only almost infinite in practice since computers cannot represent all real numbers). Storing each value would take absurd amounts of memory and learning each value would take too much of time. So the agent needs to generalize from states it has seen to similar ones. To solve this problem, the action-value function is only approximated using parameters $\theta$ instead of fully solved. So $q(s, a | \theta)$ is the action-value function for state s and action a given the parameters $\theta$. There are a lot of different function approximators in the field of machine learning, most notably artificial neural networks. Neural networks are universal, nonlinear function approximators, meaning that they can approximate any possible function up to a certain error, based on -- as the name implies -- networks of neurons. A neural network consists of layers of neurons that are usually fully connected in a feed-forward manner. Each neuron sums its incoming activations multiplied by individual weights and then applies a nonlinear activation function on that sum.  % TODO visual
 It is important that the activations are nonlinear, else, neural networks would just be linear function approximators and lose their unique capabilities.
-Neural networks' weights $\theta$ can be trained by methods of \emph{gradient descent} on an error or loss function. % TODO more on gradient descent?
+Neural networks' weights $\theta$ can be trained by methods of gradient descent on an error or loss function. % TODO more on gradient descent?
 
 However, large neural networks were known to not converge for most action-value functions. This changed when the deep Q-network created by DeepMind Technologies (now Google DeepMind) achieved great results on learning a lot of different Atari games purely by pixel data based on the same architecture~\cite{nature}. There are two very relevant ideas for stabilization. The first is \emph{experience replay} which means that experience tuples $(a_t, s_t, r_t, s_{t+1})$ are stored in memory and instead of training on the most recent experience, a random batch of experiences is selected. The neural network then trains on that batch to minimize correlations between experiences and improve speed (because most libraries are optimized on batch learning). The second measure taken is that instead of directly training the network, a different \emph{target network} is used to train the actual network. This improves the consistence of the targets for training because the model does not change as quickly. The target network is only updated to a copy of the actual network every $C$ steps. Sadly, the deep Q-network is not feasible for the task at hand because the network requires discrete actions without parameters (more on that in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}). Luckily, this problem has been solved by the deep deterministic policy gradient~(DDPG) algorithm~\cite{ddpg}, also developed by Google DeepMind, which can operate over continuous action spaces.
 
@@ -166,24 +173,54 @@ Since the game is played in real time and the actions of the other players influ
 
 \section{Implementation}
 
-The simulator for games of durak was implemented in Python~\cite{python} for versions 2.7 and 3.5. For the neural networks, the machine learning library Keras~\cite{keras} was used with {TensorFlow}~\cite{tensorflow}  as its backend. I have used Python~3.5 even though TensorFlow for Python~3.6 has been implemented because it is currently labeled unstable. I will refer to players that are not learning as \emph{bots}. The ones that do learn are \emph{agents} like before.
+For where to find the code, see \hyperref[sec:appendix]{section~\ref*{sec:appendix}}.
 
-To keep the simulated games as authentic as possible, I use a thread for each player for the real time aspect. The random bots' behaviour is based on probabilities. With a certain probability, the bots wait and with another, they check. These probabilities are calculated each game based on a normal distribution with a given mean and variance and clipped to have values that make sense. For example, a player cannot always wait (because they have to check at some point) but they \emph{can} never check (therefore always playing all their cards). With the exception of when the defending bot has no possible actions, they always check. The game is fully customizable supporting different deck and hand sizes, a variable amount of players, and a fixed trump suit. To make learning easier, I always assign hearts as the trump suit. Also, random bots can be turned off so that only agents play against each other. Assuming the agent outclasses the random bots, this is the next step for it to learn even further.
+The simulator for games of durak was implemented in Python~\cite{python} for versions 2.7 and 3.5. For the neural networks, the machine learning library Keras~\cite{keras} was used with {TensorFlow}~\cite{tensorflow}  as its backend. I have used Python~3.5 even though TensorFlow for Python~3.6 has been implemented because it is currently labeled unstable. I will refer to players that are not learning as \emph{bots} or \emph{random bots} because they are acting at random. The players that do learn are \emph{agents} like before.
 
-Cards have a numerical value ranging from 0 to 12 and suit ranging from 0 to 4. For generalization purposes, these values are fixed, even if cards have been removed. (An ace will always have value 12, no matter how many cards have been removed.)
+To keep the simulated games as authentic as possible, I use a thread for each player for the real time aspect. The random bots' behaviour is based on probabilities. With a certain probability, the bots wait and with another, they check. These probabilities are calculated each game based on a normal distribution with a given mean and variance and clipped to have values that make sense. For example, a player cannot always wait (because they have to check at some point) but they \emph{can} never check (therefore always playing all their cards). The game is fully customizable supporting different deck and hand sizes, a variable amount of players, and a fixed trump suit. To make learning easier, I always assign hearts as the trump suit. The suit itself does not matter but when loading an agent, it should be the same as it was trained on. Also, random bots can be turned off so that only agents play against each other. Assuming the agent outclasses the random bots, this is the next step for it to learn even further.
+
+Cards have a numerical value ranging from 0 to 12 and suit ranging from 0 to 4. For generalization purposes, these values are fixed, even if cards have been removed. (An ace will always have value 12, no matter how many cards have been removed.) \medskip
 
 Three % TODO really?
 different types of feature vectors that support size buffering have been implemented according to the explanations in \hyperref[sec:challenges]{section~\ref*{sec:challenges}}.
 As an example to explain the differences between the types, assume that the agent is the player at index 1 holding the ten of spades (T$\spadesuit$), the player at index 0 has a ten of hearts (T$\heartsuit$) and another player is at index 3 holding the ten of diamonds (T$\diamondsuit$). A jack of clubs (J$\clubsuit$) is on the field and a queen of clubs (Q$\clubsuit$) had previously been successfully defended and is out of the game. In the deck, yet to be seen, is a king of clubs (K$\clubsuit$) that no player has any information about. At the bottom of the deck as the revealed trump lies the ace of clubs (A$\clubsuit$). The deck contained 52 cards at the beginning and there are four players in the game, so indices range from 0 to 3. I will also list the size of the vectors for this example, adding 3 extra features that I will discuss later.
 \begin{enumerate}
   \item Indices from the agent to locate cards; $52 + 3 = 55$~features. The values in our example would be (T$\spadesuit$:~0), (T$\heartsuit$:~3) and (T$\diamondsuit$:~2). Index values wrap around so they are always positive. Cards on the field have value~$-1$, cards out of the game have~$-2$, cards without a known location have~$-3$ and the bottom trump has~$-4$, so the remaining cards' feature values are (J$\clubsuit$:~$-1$), (Q$\clubsuit$:~$-2$), (K$\clubsuit$:~$-3$) and (A$\clubsuit$:~$-4$).
-  \item Binary features for each player for each card; $(4 + 2) \cdot 52  + 1 + 3 = 316$~features. Because the cards are treated seperately for each player, we assign an index to each player at which the cards are stored and use index $F$ to denote where the locations of cards on the field start and $G$ to denote the one for cards out of the game. The locations in the feature vector of the players are ordered like in the first example by indices from the agent. The values in the example are (T$\spadesuit$,~0:~1), (T$\spadesuit$,~$\{1, 2, 3, F, G\}$:~0); (T$\heartsuit$,~3:~1), (T$\heartsuit$,~$\{0, 1, 2, F, G\}$:~0); (T$\diamondsuit$,~2:~1), (T$\diamondsuit$,~$\{0, 1, 3, F, G\}$:~0); (J$\clubsuit$,~$F$:~1), (J$\clubsuit$,~$\{0, 1, 2, 3, G\}$:~0); (Q$\clubsuit$,~$G$:~1), (Q$\clubsuit$,~$\{0, 1, 2, 3, F\}$:~0).
+  \item Binary features for each player for each card; $(4 + 2) \cdot 52  + 1 + 3 = 316$~features. Because the cards are treated separately for each player, we assign an index to each player at which the cards are stored and use index $F$ to denote where the locations of cards on the field start and $G$ to denote the one for cards out of the game. The locations in the feature vector of the players are ordered like in the first example by indices from the agent. The values in the example are (T$\spadesuit$,~0:~1), (T$\spadesuit$,~$\{1, 2, 3, F, G\}$:~0); (T$\heartsuit$,~3:~1), (T$\heartsuit$,~$\{0, 1, 2, F, G\}$:~0); (T$\diamondsuit$,~2:~1), (T$\diamondsuit$,~$\{0, 1, 3, F, G\}$:~0); (J$\clubsuit$,~$F$:~1), (J$\clubsuit$,~$\{0, 1, 2, 3, G\}$:~0); (Q$\clubsuit$,~$G$:~1), (Q$\clubsuit$,~$\{0, 1, 2, 3, F\}$:~0).
   The king and ace are simply zero for all indices because they have no known location yet: (K$\clubsuit$,~$\{0, 1, 2, 3, F, G\}$:~0) and (A$\clubsuit$,~$\{0, 1, 2, 3, F, G\}$:~0). To still use the information of the bottom trump, I add an extra feature that stores the numerical value of it, so that feature's value is 12.
   \item Amount of each card in each neighbour's hand; $(2 + 2) \cdot 52 + 1 + 3 = 212$~features. This is the feature vector supposed to be able to be used for any game of durak defined in this thesis. When no duplicates are in the deck, this is a smaller version of the features of type 2 which is why the values in the example are the same except for the ones for the player with index 3 who is not observed (because they are not a neighbour of the agent). Those values simply do not exist.
 \end{enumerate}
 Now there are three extra features in each vector that give crucial information to the game: One for the numerical suit the next player could not defend, one for whether the defending player checks and one for the amount of cards left in the deck.
 
-Because the number of parameters is very large, they simply cannot all be tuned.
+Rewards are given after each action except when the turn ends. The rewards given during an attack are 0 as not much can be said about what will happen. At the end of the turn, the agent receives a reward based on three different factors: The difference in the average value of the cards in hand except trump cards, the difference in the average value of trump cards in hand and the difference in the amount of trump cards in hand. Each of these factors is normalized and weighted to give control over how much value is assigned to each factor.
+Let $v$ be the average card value in hand without trumps, $t$ the average trump value in hand and $c$ the amount of trump cards in hand. A subscripted $b$ denotes the value at the beginning of the turn while an $a$ is for after the turn has ended. The weights for each value are a $w$ with the value's symbol subscripted. As a formula for the end of turn reward, we get
+\begin{equation*}
+  R_{end\ of\ turn} = w_v \cdot (v_a - v_b) + w_t \cdot (t_a - t_b) + w_c \cdot (c_a - c_b).
+\end{equation*}
+This value is also normalized to be between 0 and 1 (by normalizing the input $w$ to sum to 1). Rewards for winning and losing are awarded when the game ends. When the agent waits, it receives a small negative reward so that it will not indefinitely wait. Also, the agent has to learn which actions are legal and which are not. That is why, when the agent tries to execute an illegal action, I store the experience with an unchanged game state and give a large negative reward. This can also be deactivated. The agent then waits and tries again. With probability $\epsilon$, the agent chooses a random legal action. $\epsilon$ is linearly annealed from a starting value to a minimum value in the first $C$ episodes.
+
+To have some strategy, the random bots wait until all current cards are defended or the defender checks until they place another one. This is usually the best strategy unless a player wants to get rid of their cards before the maximum amount of cards is placed. This is also implemented for agents but can be toggled to give the agent more freedom in decision making. Assuming this is not the best strategy, which is very likely, the agent should get better results than the random bots.
+
+Excluding the amount of parameters for the game itself, over 30 different parameters can be tuned that each affect the agent's learning.
+Because the number of parameters is this large, they simply cannot all be tuned. I have relied on the parameters in the DDPG paper~\cite[p.~11]{ddpg} and try fitting them to the problem at hand during the different experiments.
+As the optimizer, I have primarily used Adam \cite{adam}. This decision was also influenced by the DDPG paper.
+To make comparisons of experiments easier, I also implemented a script that plots the average win rates over a given amount of games which helps to see the change of results. \medskip
+
+The code for the actor and critic networks and subsequently their learning was heavily based on Ben Lau's~\cite{torcs} who also used Keras with TensorFlow to train an agent for the racing game TORCS (recreating the DDPG paper's results in Python).
+
+\newpage
+
+\section{Experiments}
+
+The experiments in this section were mostly conducted with different versions of the code because improvements were continuously added. In the earlier experiments, some data was lost due to access issues but since those were more primitive approaches, it should not be much of an issue.
+The low win rate of the agent at the beginning of the experiments can be explained because the agent and the bot do not execute the same random behaviour. For example, the bot has a fixed probability for checking each game while the agent will check with the same probability as any other action.
+
+\newpage
+
+\section{Appendix}
+\label{sec:appendix}
+
+The code is available online on GitHub at \url{github.com/janEbert/rldurak}.
 
 \newpage
 
@@ -221,6 +258,11 @@ Because the number of parameters is very large, they simply cannot all be tuned.
   Abadi, Martín, et al. ``TensorFlow: Large-scale machine learning on heterogenous systems.'' \emph{TensorFlow}. Google Brain Team, 9 Nov. 2015. Web.
   2017.,
   \url{tensorflow.org}
+
+\bibitem{adam}
+  Kingma, Diederik P., and Jimmy Lei Ba. ``Adam: A Method for Stochastic Optimization.'' \emph{arXiv.org}. arXiv:1412.6980v9, 30 Jan. 2017. Web.
+  19 Sep. 2017.,
+  \url{arxiv.org/abs/1412.6980v9}
 
 \bibitem{torcs}
   Lau, Ben. ``Using Keras and Deep Deterministic Policy Gradient to play TORCS.'' \emph{GitHub Pages}. GitHub, 11 Oct. 2016. Web.
