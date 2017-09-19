@@ -814,7 +814,7 @@ if __name__ == '__main__':
         print_exc()
         print('')
     if sys.version_info[0] == 2:
-        file_name = '/media/data/jebert/actor-' + str(state_shape)
+        file_name = '/media/data/jebert/actor-' + str(state_shape) \
                 + '-features.h5'
     elif sys.version_info[0] == 3:
         file_name = 'actor-' + str(state_shape) + '-features.h5'
@@ -824,7 +824,7 @@ if __name__ == '__main__':
         print_exc()
         print('')
     if sys.version_info[0] == 2:
-        file_name = '/media/data/jebert/critic-' + str(state_shape)
+        file_name = '/media/data/jebert/critic-' + str(state_shape) \
                 + '-features.h5'
     elif sys.version_info[0] == 3:
         file_name = 'critic-' + str(state_shape) + '-features.h5'
