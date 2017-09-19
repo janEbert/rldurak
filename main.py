@@ -672,6 +672,8 @@ class ActionReceiver(threading.Thread):
                 self.add_action(game.wait_action())
         elif self.possible_actions:
             self.add_action(choice(self.possible_actions))
+        else:
+            self.add_action(game.wait_action())
         self.get_extended_actions()
 
     def add_random_action(self):
@@ -694,7 +696,6 @@ def store_experience(experience):
     new state). This function is threadsafe.
     """
     global experience_ix
-    experience_lock.acquire()
     if len(experiences) == max_experience_count:
         experiences[experience_ix] = experience
         experience_ix += 1
@@ -702,7 +703,6 @@ def store_experience(experience):
             experience_ix = 0
     else:
         experiences.append(experience)
-    experience_lock.release()
 
 
 def action_to_string(player_ix, action):
@@ -766,7 +766,6 @@ if __name__ == '__main__':
     epsilon_step = (epsilon_start - min_epsilon) / float(epsilon_episodes)
     min_epsilon += epsilon_step
     experiences = []
-    experience_lock = threading.Lock()
     experience_ix = 0
     win_stats = np.zeros(episodes, dtype=np.int8)
 
