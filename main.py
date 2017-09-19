@@ -319,17 +319,16 @@ def main_loop():
                 threads[active_player_indices.index(player_ix)].event.set()
         # attack ended
         clear_threads()
-        if not game.ended():
-            if only_ais:
-                for ix in last_experiences:
-                    if last_experiences[ix] is None:
-                        last_experiences[ix] = (state[ix], game.check_action(),
-                                None, None)
-            elif (game.kraudia_ix in last_experiences
-                    and last_experiences[game.kraudia_ix] is None):
-                last_experiences[game.kraudia_ix] = (state,
-                        game.check_action(), None, None)
-            end_turn(first_attacker_ix, last_experiences, hand_means)
+        if only_ais:
+            for ix in last_experiences:
+                if last_experiences[ix] is None:
+                    last_experiences[ix] = (state[ix], game.check_action(),
+                            None, None)
+        elif (game.kraudia_ix in last_experiences
+                and last_experiences[game.kraudia_ix] is None):
+            last_experiences[game.kraudia_ix] = (state,
+                    game.check_action(), None, None)
+        end_turn(first_attacker_ix, last_experiences, hand_means)
         training_counter += 1
         if verbose:
             print('Starting to learn from experiences...')
