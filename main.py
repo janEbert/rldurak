@@ -48,8 +48,8 @@ n2_critic = 50
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
-win_reward = 15
-loss_reward = -15
+win_reward = 10
+loss_reward = -10
 wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
@@ -196,9 +196,10 @@ def main_loop():
                         store_experience((state, action, wait_reward, state))
                     threads[active_player_indices.index(player_ix)].event.set()
                 continue
-            if last_experiences[player_ix] is not None:
-                store_experience(last_experiences[player_ix])
-                last_experiences[player_ix] = None
+            if only_ais or player_ix == game.kraudia_ix:
+                if last_experiences[player_ix] is not None:
+                    store_experience(last_experiences[player_ix])
+                    last_experiences[player_ix] = None
             if verbose:
                 print(action_to_string(player_ix, action))
             if action[0] == 0:
@@ -559,10 +560,9 @@ def hand_mean_reward(hand_means, player_ix):
     else:
         avg_before, trump_avg_before, trump_count_before = hand_means
     avg_after, trump_avg_after, trump_count_after = game.hand_means(player_ix)
-    if trump_avg_after < trump_count_before:
-        return (avg_after - avg_before) * norm_weights[0] \
-                + (trump_avg_after - trump_avg_before) * norm_weights[1] \
-                + (trump_count_after - trump_count_before) * norm_weights[2]
+    return (avg_after - avg_before) * norm_weights[0] \
+            + (trump_avg_after - trump_avg_before) * norm_weights[1] \
+            + (trump_count_after - trump_count_before) * norm_weights[2]
 
 
 class ActionReceiver(threading.Thread):
