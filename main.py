@@ -35,7 +35,7 @@ min_epsilon = 0.1
 epsilon_start = 1 # if not load else min_epsilon
 epsilon_episodes = 6000
 # learning rates
-alpha_actor = 0.001
+alpha_actor = 0.0001
 alpha_critic = 0.001
 # update factors
 tau_actor = 0.001
@@ -77,6 +77,7 @@ def main():
     global psi, chi, epsilon
     durak_ix = -1
     wins = 0
+    training_counter = 0
     completed_episodes = episodes
     for n in range(episodes):
         if not only_ais:
@@ -92,7 +93,7 @@ def main():
         else:
             game.defender_ix = durak_ix
         try:
-            result = main_loop()
+            result, training_counter_add = main_loop()
         except KeyboardInterrupt:
             clear_threads()
             print('Program was stopped by keyboard interrupt\n')
@@ -104,6 +105,7 @@ def main():
             print('')
             completed_episodes = n
             break
+        training_counter += training_counter_add
         if not result:
             print('No action was retrieved in time. Program stopped\n')
             completed_episodes = n
@@ -125,7 +127,7 @@ def main():
                     'over last 100 games: {2} %'.format(n_plus_one,
                     100 * wins / float(n_plus_one),
                     np.sum(win_stats[n_plus_one - 100:n_plus_one])))
-    return wins, completed_episodes
+    return wins, completed_episodes, training_counter
 
 
 def create_game():
@@ -164,6 +166,7 @@ def main_loop():
     """Main loop for receiving and executing actions and
     giving rewards.
     """
+    training_counter = 0
     while not game.ended():
         active_player_indices = spawn_threads()
         first_attacker_ix = active_player_indices[0]
@@ -173,7 +176,7 @@ def main_loop():
                 player_ix, action = action_queue.get(timeout=10)
             except queue.Empty:
                 clear_threads()
-                return False
+                return False, training_counter
             state = game.features.copy()
             if game.players[player_ix].checks or action[0] == 4:
                 action_queue.task_done()
@@ -333,13 +336,14 @@ def main_loop():
             last_experiences[game.kraudia_ix] = (state, game.check_action(),
                     None, None)
         end_turn(first_attacker_ix, last_experiences)
+        training_counter += 1
         if verbose:
             print('Starting to learn from experiences...')
             train_from_memory()
             print('Finished learning')
         else:
             train_from_memory()
-    return True
+    return True, training_counter
 
 
 def spawn_threads():
@@ -578,8 +582,7 @@ class ActionReceiver(threading.Thread):
                 while not self.ended:
                     # everything is defended
                     if ((not game.field.attack_cards or defender.checks)
-                            and not player.checks
-                            and self.possible_actions):
+                            and not player.checks):
                         self.add_selected_action()
             # defender
             else:
@@ -667,7 +670,7 @@ class ActionReceiver(threading.Thread):
                 store_experience((state, action, illegal_action_reward,
                         state))
                 self.add_action(game.wait_action())
-        else:
+        elif self.possible_actions:
             self.add_action(choice(self.possible_actions))
         self.get_extended_actions()
 
@@ -776,14 +779,14 @@ if __name__ == '__main__':
 
     print('\nStarting to play\n')
     start_time = clock()
-    wins, completed_episodes = main()
+    wins, completed_episodes, training_counter = main()
     duration = clock() - start_time
     average_duration = duration
     win_rate = wins * 100
     # plot_model(actor, to_file='actor-' + str(state_shape) + '-features.png',
     #         show_shapes=True)
-    # plot_model(critic, to_file='critic-' + str(state_shape) + '-features.png',
-    #         show_shapes=True)
+    # plot_model(critic, to_file='critic-' + str(state_shape)
+    #         + '-features.png', show_shapes=True)
     if completed_episodes > 0:
         average_duration /= float(completed_episodes)
         win_rate /= float(completed_episodes)
@@ -792,25 +795,41 @@ if __name__ == '__main__':
             episodes, plural_s, duration, average_duration))
     print('Kraudia won {0}/{1} games which is a win rate of {2:.2f} %'.format(
             wins, completed_episodes, win_rate))
+    print('The neural network was trained a total of {0} times'.format(
+            training_counter))
     print('Saving data...')
-    file_name = 'win_stats_'
+    if sys.version_info[0] == 2:
+        file_name = '/media/data/jebert/win_stats_'
+    elif sys.version_info[0] == 3:
+        file_name = 'win_stats_'
     if completed_episodes != episodes:
         file_name += 'interrupted_during_' + str(completed_episodes + 1) + '_'
     file_int = 0
     while isfile(file_name + str(file_int) + '.npy'):
         file_int += 1
     try:
-        np.save(file_name + str(file_int) + '.npy', win_stats, allow_pickle=False)
+        np.save(file_name + str(file_int) + '.npy', win_stats,
+                allow_pickle=False)
     except IOError:
         print_exc()
         print('')
+    if sys.version_info[0] == 2:
+        file_name = '/media/data/jebert/actor-' + str(state_shape)
+                + '-features.h5'
+    elif sys.version_info[0] == 3:
+        file_name = 'actor-' + str(state_shape) + '-features.h5'
     try:
-        actor.save_weights()
+        actor.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
+    if sys.version_info[0] == 2:
+        file_name = '/media/data/jebert/critic-' + str(state_shape)
+                + '-features.h5'
+    elif sys.version_info[0] == 3:
+        file_name = 'critic-' + str(state_shape) + '-features.h5'
     try:
-        critic.save_weights()
+        critic.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
