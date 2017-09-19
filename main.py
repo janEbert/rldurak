@@ -48,8 +48,8 @@ n2_critic = 50
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
-win_reward = 10
-loss_reward = -10
+win_reward = 12
+loss_reward = -12
 wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
@@ -320,16 +320,17 @@ def main_loop():
                 threads[active_player_indices.index(player_ix)].event.set()
         # attack ended
         clear_threads()
-        if only_ais:
-            for ix in last_experiences:
-                if last_experiences[ix] is None:
-                    last_experiences[ix] = (state[ix], game.check_action(),
-                            None, None)
-        elif (game.kraudia_ix in last_experiences
-                and last_experiences[game.kraudia_ix] is None):
-            last_experiences[game.kraudia_ix] = (state,
-                    game.check_action(), None, None)
-        end_turn(first_attacker_ix, last_experiences, hand_means)
+        if not game.ended():
+            if only_ais:
+                for ix in last_experiences:
+                    if last_experiences[ix] is None:
+                        last_experiences[ix] = (state[ix], game.check_action(),
+                                None, None)
+            elif (game.kraudia_ix in last_experiences
+                    and last_experiences[game.kraudia_ix] is None):
+                last_experiences[game.kraudia_ix] = (state,
+                        game.check_action(), None, None)
+            end_turn(first_attacker_ix, last_experiences, hand_means)
         training_counter += 1
         if verbose:
             print('Starting to learn from experiences...')
