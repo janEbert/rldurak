@@ -438,7 +438,7 @@ def reward_winner_from_last_experience(last_experiences, player_ix):
         if only_ais:
             store_experience((exp[0], exp[1], loss_reward,
                     game.features[1 - player_ix]))
-        elif player_ix == game.kraudia_ix:
+        elif player_ix != game.kraudia_ix and game.kraudia_ix >= 0:
             store_experience((exp[0], exp[1], loss_reward, game.features))
         return {}
     return remove_from_last_experiences(last_experiences, player_ix)
