@@ -319,7 +319,7 @@ def main_loop():
                 threads[active_player_indices.index(player_ix)].event.set()
         # attack ended
         clear_threads()
-        if not game.ended()
+        if not game.ended():
             if only_ais:
                 for ix in last_experiences:
                     if last_experiences[ix] is None:
