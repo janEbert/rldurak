@@ -509,8 +509,6 @@ def end_turn(player_ix, last_experiences, hand_means):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
             if game.remove_player(player_ix):
-                assert not last_experiences, ('An experience has not '
-                        'been completed')
                 return
             elif player_ix == game.player_count:
                 player_ix = 0
@@ -523,16 +521,29 @@ def end_turn(player_ix, last_experiences, hand_means):
         if player_ix == game.player_count:
             player_ix = 0
     if first_attacker_ix != 0 and player_ix == game.player_count - 1:
-        game.draw(0)
-        if only_ais or game.kraudia_ix == 0:
-            last_experiences = update_last_experience(last_experiences, 0,
-                    hand_mean_reward(hand_means, 0))
+        if game.is_winner(0):
+            last_experiences = reward_winner_from_last_experience(
+                    last_experiences, 0)
+            if game.remove_player(0):
+                return
+        else:
+            game.draw(0)
+            if only_ais or game.kraudia_ix == 0:
+                last_experiences = update_last_experience(last_experiences, 0,
+                        hand_mean_reward(hand_means, 0))
     elif (first_attacker_ix != player_ix + 1
             and player_ix != game.player_count - 1):
-        game.draw(player_ix + 1)
-        if only_ais or player_ix + 1 == game.kraudia_ix:
-            last_experiences = update_last_experience(last_experiences,
-                    player_ix + 1, hand_mean_reward(hand_means, player_ix + 1))
+        if game.is_winner(player_ix + 1):
+            last_experiences = reward_winner_from_last_experience(
+                    last_experiences, player_ix + 1)
+            if game.remove_player(player_ix + 1):
+                return
+        else:
+            game.draw(player_ix + 1)
+            if only_ais or player_ix + 1 == game.kraudia_ix:
+                last_experiences = update_last_experience(last_experiences,
+                        player_ix + 1,
+                        hand_mean_reward(hand_means, player_ix + 1))
     if game.field.attack_cards:
         amount = game.take()
         if only_ais or player_ix == game.kraudia_ix:
@@ -550,9 +561,6 @@ def end_turn(player_ix, last_experiences, hand_means):
                 last_experiences = update_last_experience(last_experiences,
                         player_ix, hand_mean_reward(hand_means, player_ix))
             game.update_defender()
-    for ix in last_experiences:
-        assert last_experiences[ix] is None, ('An experience has not been '
-                'completed')
 
 
 def hand_mean_reward(hand_means, player_ix):
