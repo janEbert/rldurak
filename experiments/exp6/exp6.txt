@@ -50,15 +50,15 @@ deck_size = 12
 hand_size = 3
 
 
-Episode 100 ended. Total win rate: 32.00 %; win rate over last 100 games: 32 %
-Episode 200 ended. Total win rate: 32.00 %; win rate over last 100 games: 32 %
-Episode 300 ended. Total win rate: 33.00 %; win rate over last 100 games: 35 %
-Episode 400 ended. Total win rate: 32.75 %; win rate over last 100 games: 32 %
-Episode 500 ended. Total win rate: 31.40 %; win rate over last 100 games: 26 %
-Episode 600 ended. Total win rate: 30.83 %; win rate over last 100 games: 28 %
-Episode 700 ended. Total win rate: 30.71 %; win rate over last 100 games: 30 %
-Episode 800 ended. Total win rate: 29.75 %; win rate over last 100 games: 23 %
-Episode 900 ended. Total win rate: 28.56 %; win rate over last 100 games: 19 %
+Episode 100 ended. Total win rate: 32.00 %; win rate over last 100 games:  32 %
+Episode 200 ended. Total win rate: 32.00 %; win rate over last 100 games:  32 %
+Episode 300 ended. Total win rate: 33.00 %; win rate over last 100 games:  35 %
+Episode 400 ended. Total win rate: 32.75 %; win rate over last 100 games:  32 %
+Episode 500 ended. Total win rate: 31.40 %; win rate over last 100 games:  26 %
+Episode 600 ended. Total win rate: 30.83 %; win rate over last 100 games:  28 %
+Episode 700 ended. Total win rate: 30.71 %; win rate over last 100 games:  30 %
+Episode 800 ended. Total win rate: 29.75 %; win rate over last 100 games:  23 %
+Episode 900 ended. Total win rate: 28.56 %; win rate over last 100 games:  19 %
 Episode 1000 ended. Total win rate: 27.90 %; win rate over last 100 games: 22 %
 Episode 1100 ended. Total win rate: 27.18 %; win rate over last 100 games: 20 %
 Episode 1200 ended. Total win rate: 26.42 %; win rate over last 100 games: 18 %
@@ -149,7 +149,10 @@ Episode 9600 ended. Total win rate: 33.17 %; win rate over last 100 games: 24 %
 Episode 9700 ended. Total win rate: 33.26 %; win rate over last 100 games: 42 %
 Episode 9800 ended. Total win rate: 33.11 %; win rate over last 100 games: 19 %
 Episode 9900 ended. Total win rate: 32.87 %; win rate over last 100 games: 9 %
-Episode 10000 ended. Total win rate: 32.56 %; win rate over last 100 games: 2 %
+Episode 10000 ended. Total win rate: 32.56 %; win rate over last 100 games:2 %
 Finished 10000/10000 episodes after 25549.07 seconds; average: 2.55 seconds per episode
 Kraudia won 3256/10000 games which is a win rate of 32.56 %
 The neural network was trained a total of 90576 times
+
+
+32, 32, 35, 32, 26, 28, 30, 23, 19, 22, 20, 18, 27, 22, 19, 21, 19, 25, 22, 19, 33, 19, 15, 10, 16, 31, 23, 24, 22, 18, 20, 12, 18, 29, 45, 12, 25, 35, 31, 25, 30, 31, 25, 47, 30, 26, 41, 18, 48, 39, 48, 50, 51, 52, 51, 56, 46, 49, 50, 59, 54, 66, 43, 57, 41, 54, 64, 48, 53, 34, 31, 38, 41, 36, 46, 40, 47, 42, 56, 51, 48, 53, 48, 21, 22, 9, 51, 37, 27, 14, 9, 19, 16, 22, 21, 24, 42, 19, 9, 2
