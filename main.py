@@ -5,7 +5,7 @@ if sys.version_info[0] == 2:
     range = xrange
 elif sys.version_info[0] == 3:
     import queue
-from os.path import isfile
+from os.path import isfile, exists
 from random import choice, sample
 from time import clock
 from traceback import print_exc
@@ -796,7 +796,7 @@ if __name__ == '__main__':
         state_shape = 29
     weight_sum = weights[0] + weights[1] + weights[2]
     norm_weights = (weight_sum / float(weights[0] * 12),
-            weight_sum / float(weights[1] * 25),
+            weight_sum / float(weights[1] * 12),
             weight_sum / float(weights[2] * hand_size))
     game = None
     psi = None
@@ -839,7 +839,10 @@ if __name__ == '__main__':
             training_counter))
     print('Saving data...')
     if sys.version_info[0] == 2:
-        file_name = '/media/data/jebert/win_stats_'
+        prefix = '/media/data/jebert/'
+        if not exists(prefix):
+            prefix = ''
+        file_name = prefix + 'win_stats_'
     elif sys.version_info[0] == 3:
         file_name = 'win_stats_'
     if completed_episodes != episodes:
@@ -854,8 +857,7 @@ if __name__ == '__main__':
         print_exc()
         print('')
     if sys.version_info[0] == 2:
-        file_name = '/media/data/jebert/actor-' + str(state_shape) \
-                + '-features.h5'
+        file_name = prefix + 'actor-' + str(state_shape) + '-features.h5'
     elif sys.version_info[0] == 3:
         file_name = 'actor-' + str(state_shape) + '-features.h5'
     try:
@@ -864,8 +866,7 @@ if __name__ == '__main__':
         print_exc()
         print('')
     if sys.version_info[0] == 2:
-        file_name = '/media/data/jebert/critic-' + str(state_shape) \
-                + '-features.h5'
+        file_name = prefix + 'critic-' + str(state_shape) + '-features.h5'
     elif sys.version_info[0] == 3:
         file_name = 'critic-' + str(state_shape) + '-features.h5'
     try:

@@ -835,16 +835,12 @@ class Game:
                 value_avg += card.num_value
                 count += 1
             else:
-                trump_value_avg += card.num_value + 13
+                trump_value_avg += card.num_value
                 trump_count += 1
         if count > 0:
             value_avg /= float(count)
-        else:
-            value_avg = 0
         if trump_count > 0:
             trump_value_avg /= float(trump_count)
-        else:
-            trump_value_avg = 0
         return value_avg, trump_value_avg, trump_count
 
     def is_winner(self, player_ix):
