@@ -514,7 +514,10 @@ def end_turn(player_ix, last_experiences, hand_means):
                 player_ix = 0
         else:
             game.draw(player_ix)
-            if only_ais or player_ix == game.kraudia_ix:
+            if game.will_end() and game.is_winner(1 - player_ix):
+                last_experiences = reward_winner_from_last_experience(
+                        last_experiences, 1 - player_ix)
+            elif only_ais or player_ix == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
                         player_ix, hand_mean_reward(hand_means, player_ix))
             player_ix += 1
@@ -528,7 +531,10 @@ def end_turn(player_ix, last_experiences, hand_means):
                 return
         else:
             game.draw(0)
-            if only_ais or game.kraudia_ix == 0:
+            if game.will_end() and game.is_winner(1):
+                last_experiences = reward_winner_from_last_experience(
+                        last_experiences, 1)
+            elif only_ais or game.kraudia_ix == 0:
                 last_experiences = update_last_experience(last_experiences, 0,
                         hand_mean_reward(hand_means, 0))
     elif (first_attacker_ix != player_ix + 1
@@ -540,7 +546,10 @@ def end_turn(player_ix, last_experiences, hand_means):
                 return
         else:
             game.draw(player_ix + 1)
-            if only_ais or player_ix + 1 == game.kraudia_ix:
+            if game.will_end() and game.is_winner(0):
+                last_experiences = reward_winner_from_last_experience(
+                        last_experiences, 0)
+            elif only_ais or player_ix + 1 == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
                         player_ix + 1,
                         hand_mean_reward(hand_means, player_ix + 1))
