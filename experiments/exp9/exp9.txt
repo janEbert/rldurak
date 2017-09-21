@@ -48,3 +48,8 @@ wait_until_defended = True
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
+(default)
+
+Finished 10000/10000 episodes after 29269.10 seconds; average: 2.93 seconds per episode
+Kraudia won 4329/10000 games which is a win rate of 43.29 %
+The neural network was trained a total of 93993 times

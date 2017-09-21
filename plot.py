@@ -20,7 +20,8 @@ def main(win_stats, epsilon_start, min_epsilon, epsilon_episodes, count):
     episodes = np.arange(count, win_stat_count + 1, count)
     plt.plot(episodes, win_stat_means)
     plt.plot(episodes, epsilon_means)
-    plt.legend(['Win rate', r'$\epsilon$'])
+    plt.axhline(0.5, alpha=0.7, linestyle='dotted', color='grey')
+    plt.legend(['Win rate', r'$\epsilon$', '50 %'])
     plt.xlabel('Episodes')
     plt.ylabel(r'Means of wins and $\epsilon$ values over ' + str(count)
             + ' episodes each')
@@ -31,16 +32,21 @@ def main(win_stats, epsilon_start, min_epsilon, epsilon_episodes, count):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
-        print('Usage: plot.py win_stats.npy epsilon_start min_epsilon '
-                'epsilon_episodes [number of wins to average over '
-                '(default: 100)]')
+    if len(sys.argv) < 2:
+        print('Usage: plot.py win_stats.npy [epsilon_start=1] '
+                '[min_epsilon=0.1] [epsilon_episodes=6000] '
+                '[number of wins to average over=100]')
     else:
         win_stats = np.load(sys.argv[1], allow_pickle=False)
-        epsilon_start = float(sys.argv[2])
-        min_epsilon = float(sys.argv[3])
-        epsilon_episodes = int(sys.argv[4])
-        if len(sys.argv) >= 6:
+        if len(sys.argv) > 2:
+          epsilon_start = float(sys.argv[2])
+          min_epsilon = float(sys.argv[3])
+          epsilon_episodes = int(sys.argv[4])
+        else:
+          epsilon_start = 1
+          min_epsilon = 0.1
+          epsilon_episodes = 6000
+        if len(sys.argv) > 5:
             count = sys.argv[5]
         else:
             count = 100
