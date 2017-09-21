@@ -35,14 +35,14 @@ min_epsilon = 0.1
 epsilon_start = 1 # if not load else min_epsilon
 epsilon_episodes = 6000
 # learning rates
-alpha_actor = 0.0001
-alpha_critic = 0.001
+alpha_actor = 0.001
+alpha_critic = 0.01
 # update factors
-tau_actor = 0.001
-tau_critic = 0.001
+tau_actor = 0.01
+tau_critic = 0.01
 # number of hidden neurons in each layer
-n1_actor = 50
-n1_critic = 50
+n1_actor = 100
+n1_critic = 100
 n2_actor = 50
 n2_critic = 50
 gamma = 0.99 # discount factor
@@ -54,7 +54,7 @@ wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
 # difference in mean trump value and difference in trump amount
-weights = (1, 2, 2)
+weights = (1, 2, 3)
 # whether the features always contain 52 cards even though less are
 # necessary (so that shape is the same for any amount of cards)
 buffer_features = False
@@ -517,6 +517,8 @@ def end_turn(player_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(1 - player_ix):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1 - player_ix)
+                game.remove_player(1 - player_ix)
+                return
             elif only_ais or player_ix == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
                         player_ix, hand_mean_reward(hand_means, player_ix))
@@ -534,6 +536,8 @@ def end_turn(player_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(1):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1)
+                game.remove_player(1)
+                return
             elif only_ais or game.kraudia_ix == 0:
                 last_experiences = update_last_experience(last_experiences, 0,
                         hand_mean_reward(hand_means, 0))
@@ -549,6 +553,8 @@ def end_turn(player_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(0):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 0)
+                game.remove_player(0)
+                return
             elif only_ais or player_ix + 1 == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
                         player_ix + 1,
