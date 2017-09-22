@@ -1,7 +1,7 @@
 episodes = 10000
 # whether only AIs are in the game or one AI and random bots
-only_ais = True
-load = True # whether to load the models' weights
+only_ais = False
+load = False # whether to load the models' weights
 verbose = False # whether to print game progress
 feature_type = 2 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
@@ -30,7 +30,7 @@ wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
 # difference in mean trump value and difference in trump amount
-weights = (1, 2, 2)
+weights = (1, 2, 3)
 # whether the features always contain 52 cards even though less are
 # necessary (so that shape is the same for any amount of cards)
 buffer_features = False
@@ -48,8 +48,7 @@ wait_until_defended = True
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
-names = ['Alice', 'Bob']
-(rest default)
+(default)
 
 
-first experiment without random bots!
+test for which reward weights are better
