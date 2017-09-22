@@ -24,7 +24,7 @@ import game.game as game_m
 
 episodes = 10000
 # whether only AIs are in the game or one AI and random bots
-only_ais = False
+only_ais = True
 load = False # whether to load the models' weights
 verbose = False # whether to print game progress
 feature_type = 2 # 1, 2 or (unsupported) 3
@@ -72,7 +72,7 @@ wait_until_defended = True
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
-names = ['Alice']
+names = ['Alice', 'Kraudia']
 deck_size = 12
 hand_size = 3
 trump_suit = 2 # hearts (better not change this for consistency)
@@ -400,13 +400,13 @@ def update_last_experience(last_experiences, player_ix, reward):
     """Update the last experience stored for the given player index
     with the given reward and current game state and remove it.
     """
-    exp = last_experiences[player_ix]
+    exp = last_experiences.pop(player_ix)
     if only_ais:
         store_experience((exp[0], exp[1], reward,
                 game.features[player_ix]))
     else:
         store_experience((exp[0], exp[1], reward, game.features))
-    return remove_from_last_experiences(last_experiences, player_ix)
+    return last_experiences
 
 
 def reward_winner(player_ix, state, action):
@@ -415,12 +415,13 @@ def reward_winner(player_ix, state, action):
     Also reward loser if there is one already.
     """
     if only_ais:
-        store_experience((state, action, win_reward, game.features[player_ix]))
+        store_experience((state[player_ix], action, win_reward,
+                game.features[player_ix]))
     elif player_ix == game.kraudia_ix:
         store_experience((state, action, win_reward, game.features))
     if game.will_end():
         if only_ais:
-            store_experience((state, action, loss_reward,
+            store_experience((state[1 - player_ix], action, loss_reward,
                     game.features[1 - player_ix]))
         elif player_ix != game.kraudia_ix and game.kraudia_ix >= 0:
             store_experience((state, action, loss_reward, game.features))
@@ -493,16 +494,16 @@ def train_from_memory():
     critic.train_target()
 
 
-def end_turn(player_ix, last_experiences, hand_means):
+def end_turn(first_attacker_ix, last_experiences, hand_means):
     """End a turn by drawing cards for all attackers and the defender.
 
     Also give rewards.
     """
-    if player_ix == game.defender_ix:
-        player_ix += 1
-    if player_ix == game.player_count:
-        player_ix = 0
-    first_attacker_ix = player_ix
+    if first_attacker_ix == game.defender_ix:
+        first_attacker_ix += 1
+    if first_attacker_ix == game.player_count:
+        first_attacker_ix = 0
+    player_ix = first_attacker_ix
     while player_ix != game.defender_ix:
         # first attacker till last attacker, then defender
         if game.is_winner(player_ix):
@@ -510,8 +511,6 @@ def end_turn(player_ix, last_experiences, hand_means):
                     last_experiences, player_ix)
             if game.remove_player(player_ix):
                 return
-            elif player_ix == game.player_count:
-                player_ix = 0
         else:
             game.draw(player_ix)
             if game.will_end() and game.is_winner(1 - player_ix):
