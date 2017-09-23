@@ -58,7 +58,7 @@ wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
 # difference in mean trump value and difference in trump amount
-weights = (1, 2, 3)
+weights = (3, 2, 4)
 # whether the features always contain 52 cards even though less are
 # necessary (so that shape is the same for any amount of cards)
 buffer_features = False
@@ -131,13 +131,15 @@ def main():
                 print('Kraudia is the durak...\n')
         if epsilon > min_epsilon:
             epsilon -= epsilon_step
-        if not only_ais:
-            n_plus_one = n + 1
-            if n_plus_one % 100 == 0:
+        n_plus_one = n + 1
+        if n_plus_one % 100 == 0:
+            if not only_ais:
                 print('Episode {0} ended. Total win rate: {1:.2f} %; win rate '
                         'over last 100 games: {2} %'.format(n_plus_one,
                         100 * wins / float(n_plus_one),
                         np.sum(win_stats[n_plus_one - 100:n_plus_one])))
+            else:
+                print('Episode {0} ended'.format(n_plus_one))
     return wins, completed_episodes, training_counter
 
 
