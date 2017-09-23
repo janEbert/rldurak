@@ -23,6 +23,7 @@ class Actor:
         self.sess = sess
         self.state_shape = state_shape
         self.action_shape = action_shape
+        self.optimizer_choice = optimizer.lower()
         self.alpha = alpha
         self.tau = tau
         self.n1 = n1
@@ -35,9 +36,8 @@ class Actor:
         parameter_gradients = tf.gradients(self.model.output, weights,
                 -self.action_gradients)
         gradients = zip(parameter_gradients, weights)
-        optimizer = optimizer.lower()
-        assert optimizer in ['adam', 'rmsprop']
-        if optimizer == 'adam':
+        assert self.optimizer_choice in ['adam', 'rmsprop']
+        if self.optimizer_choice == 'adam':
             self.optimizer = tf.train.AdamOptimizer(
                     self.alpha, epsilon=epsilon).apply_gradients(gradients)
         else:
@@ -78,13 +78,15 @@ class Actor:
     def save_weights(self, file_name=None):
         """Save the current model's weights."""
         if file_name is None:
-            file_name = 'actor-' + str(self.state_shape) + '-features.h5'
+            file_name = 'actor-' + self.optimizer_choice + '-' \
+                    + str(self.state_shape) + '-features.h5'
         self.model.save_weights(file_name)
 
     def load_weights(self, file_name=None):
         """Load the saved weights for the model and target model."""
         if file_name is None:
-            file_name = 'actor-' + str(self.state_shape) + '-features.h5'
+            file_name = 'actor-' + self.optimizer_choice + '-' \
+                    + str(self.state_shape) + '-features.h5'
         try:
             self.model.load_weights(file_name)
             self.target_model.load_weights(file_name)
