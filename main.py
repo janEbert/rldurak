@@ -24,7 +24,7 @@ import game.game as game_m
 
 episodes = 10000
 # whether only AIs are in the game or one AI and random bots
-only_ais = True
+only_ais = False
 load = False # whether to load the models' weights
 verbose = False # whether to print game progress
 feature_type = 2 # 1, 2 or (unsupported) 3
@@ -125,14 +125,15 @@ def main():
                     print('Kraudia did not lose!\n')
             elif verbose:
                 print('Kraudia is the durak...\n')
-        if epsilon >= min_epsilon:
+        if epsilon > min_epsilon:
             epsilon -= epsilon_step
-        n_plus_one = n + 1
-        if n_plus_one % 100 == 0:
-            print('Episode {0} ended. Total win rate: {1:.2f} %; win rate '
-                    'over last 100 games: {2} %'.format(n_plus_one,
-                    100 * wins / float(n_plus_one),
-                    np.sum(win_stats[n_plus_one - 100:n_plus_one])))
+        if not only_ais:
+            n_plus_one = n + 1
+            if n_plus_one % 100 == 0:
+                print('Episode {0} ended. Total win rate: {1:.2f} %; win rate '
+                        'over last 100 games: {2} %'.format(n_plus_one,
+                        100 * wins / float(n_plus_one),
+                        np.sum(win_stats[n_plus_one - 100:n_plus_one])))
     return wins, completed_episodes, training_counter
 
 
@@ -810,10 +811,10 @@ if __name__ == '__main__':
     action_queue = queue.Queue(len(names) * 6)
     epsilon = epsilon_start
     epsilon_step = (epsilon_start - min_epsilon) / float(epsilon_episodes)
-    min_epsilon += epsilon_step
     experiences = []
     experience_ix = 0
-    win_stats = np.zeros(episodes, dtype=np.int8)
+    if not only_ais:
+        win_stats = np.zeros(episodes, dtype=np.int8)
 
     sess = tf.Session(config=tf.ConfigProto())
     K.set_session(sess)
@@ -838,29 +839,32 @@ if __name__ == '__main__':
     print('Finished {0}/{1} episode{2} after {3:.2f} seconds; '
             'average: {4:.2f} seconds per episode'.format(completed_episodes,
             episodes, plural_s, duration, average_duration))
-    print('Kraudia won {0}/{1} games which is a win rate of {2:.2f} %'.format(
-            wins, completed_episodes, win_rate))
+    if not only_ais:
+        print('Kraudia won {0}/{1} games which is a win rate of '
+                '{2:.2f} %'.format(wins, completed_episodes, win_rate))
     print('The neural network was trained a total of {0} times'.format(
             training_counter))
     print('Saving data...')
-    if sys.version_info[0] == 2:
-        prefix = '/media/data/jebert/'
-        if not exists(prefix):
-            prefix = ''
-        file_name = prefix + 'win_stats_'
-    elif sys.version_info[0] == 3:
-        file_name = 'win_stats_'
-    if completed_episodes != episodes:
-        file_name += 'interrupted_during_' + str(completed_episodes + 1) + '_'
-    file_int = 0
-    while isfile(file_name + str(file_int) + '.npy'):
-        file_int += 1
-    try:
-        np.save(file_name + str(file_int) + '.npy', win_stats,
-                allow_pickle=False)
-    except IOError:
-        print_exc()
-        print('')
+    if not only_ais:
+        if sys.version_info[0] == 2:
+            prefix = '/media/data/jebert/'
+            if not exists(prefix):
+                prefix = ''
+            file_name = prefix + 'win_stats_'
+        elif sys.version_info[0] == 3:
+            file_name = 'win_stats_'
+        if completed_episodes != episodes:
+            file_name += 'interrupted_during_' + str(completed_episodes + 1) \
+                    + '_'
+        file_int = 0
+        while isfile(file_name + str(file_int) + '.npy'):
+            file_int += 1
+        try:
+            np.save(file_name + str(file_int) + '.npy', win_stats,
+                    allow_pickle=False)
+        except IOError:
+            print_exc()
+            print('')
     if sys.version_info[0] == 2:
         file_name = prefix + 'actor-' + str(state_shape) + '-features.h5'
     elif sys.version_info[0] == 3:
