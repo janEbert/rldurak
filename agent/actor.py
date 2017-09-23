@@ -13,8 +13,8 @@ class Actor:
     """An actor model selecting an action for a given state."""
 
     def __init__(
-            self, sess, state_shape, action_shape, load=True,
-            alpha=0.001, tau=0.001, n1=100, n2=150):
+            self, sess, state_shape, action_shape, load=True, optimizer='adam',
+            alpha=0.001, epsilon=1e-8, tau=0.001, n1=100, n2=150):
         """Construct an actor with the given session, learning rate,
         update factor and neurons in the hidden layers.
 
@@ -35,8 +35,14 @@ class Actor:
         parameter_gradients = tf.gradients(self.model.output, weights,
                 -self.action_gradients)
         gradients = zip(parameter_gradients, weights)
-        self.optimizer = tf.train.AdamOptimizer(
-                self.alpha).apply_gradients(gradients)
+        optimizer = optimizer.lower()
+        assert optimizer in ['adam', 'rmsprop']
+        if optimizer == 'adam':
+            self.optimizer = tf.train.AdamOptimizer(
+                    self.alpha, epsilon=epsilon).apply_gradients(gradients)
+        else:
+            self.optimizer = tf.train.RMSPropOptimizer(
+                    self.alpha, epsilon=epsilon).apply_gradients(gradients)
         self.sess.run(tf.global_variables_initializer())
         if load:
             if self.load_weights():

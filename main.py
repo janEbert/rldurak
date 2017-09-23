@@ -34,9 +34,13 @@ feature_type = 2 # 1, 2 or (unsupported) 3
 min_epsilon = 0.1
 epsilon_start = 1 # if not load else min_epsilon
 epsilon_episodes = 6000
+optimizer = 'adam' # 'adam' or 'rmsprop'
 # learning rates
 alpha_actor = 0.001
 alpha_critic = 0.01
+# numerical stability epsilon (recommended to change when using Adam!)
+epsilon_actor = 1e-8
+epsilon_critic = 1e-8
 # update factors
 tau_actor = 0.01
 tau_critic = 0.01
@@ -818,10 +822,10 @@ if __name__ == '__main__':
 
     sess = tf.Session(config=tf.ConfigProto())
     K.set_session(sess)
-    actor = actor_m.Actor(sess, state_shape, action_shape, load,
-            alpha_actor, tau_actor, n1_actor, n2_actor)
-    critic = critic_m.Critic(sess, state_shape, action_shape, load,
-            alpha_critic, tau_critic, n1_critic, n2_critic)
+    actor = actor_m.Actor(sess, state_shape, action_shape, load, optimizer,
+            alpha_actor, epsilon_actor, tau_actor, n1_actor, n2_actor)
+    critic = critic_m.Critic(sess, state_shape, action_shape, load, optimizer,
+            alpha_critic, epsilon_critic, tau_critic, n1_critic, n2_critic)
 
     print('\nStarting to play\n')
     start_time = clock()
@@ -866,18 +870,22 @@ if __name__ == '__main__':
             print_exc()
             print('')
     if sys.version_info[0] == 2:
-        file_name = prefix + 'actor-' + str(state_shape) + '-features.h5'
+        file_name = prefix + 'actor-' + optimizer + '-' + str(state_shape) \
+                + '-features.h5'
     elif sys.version_info[0] == 3:
-        file_name = 'actor-' + str(state_shape) + '-features.h5'
+        file_name = 'actor-' + optimizer + '-' + str(state_shape) \
+                + '-features.h5'
     try:
         actor.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
     if sys.version_info[0] == 2:
-        file_name = prefix + 'critic-' + str(state_shape) + '-features.h5'
+        file_name = prefix + 'critic-' + optimizer + '-' + str(state_shape) \
+                + '-features.h5'
     elif sys.version_info[0] == 3:
-        file_name = 'critic-' + str(state_shape) + '-features.h5'
+        file_name = 'critic-' + optimizer + '-' + str(state_shape) \
+                + '-features.h5'
     try:
         critic.save_weights(file_name)
     except IOError:

@@ -4,7 +4,7 @@ import keras.backend as K
 from keras.layers import Input, Dense
 from keras.layers.merge import add
 from keras.models import Model
-from keras.optimizers import Adam # , RMSprop, SGD
+from keras.optimizers import Adam, RMSprop
 import tensorflow as tf
 
 if sys.version_info[0] == 2:
@@ -15,8 +15,8 @@ class Critic:
     """A critic model evaluating an action in a given state."""
 
     def __init__(
-            self, sess, state_shape, action_shape, load=True,
-            alpha=0.001, tau=0.001, n1=100, n2=150):
+            self, sess, state_shape, action_shape, load=True, optimizer='adam',
+            alpha=0.001, epsilon=1e-8, tau=0.001, n1=100, n2=150):
         """Initialize a critic with the given session, learning rate,
         update factor and neurons in the hidden layers.
 
@@ -30,7 +30,8 @@ class Critic:
         self.n1 = n1
         self.n2 = n2
         K.set_session(sess)
-        self.model, self.state_input, self.action_input = self.create_model()
+        self.model, self.state_input, self.action_input = self.create_model(
+                optimizer, epsilon)
         self.target_model = self.create_model()[0]
         self.action_gradients = K.gradients(self.model.output,
                 self.action_input)
@@ -40,9 +41,9 @@ class Critic:
                 self.model._make_predict_function()
                 self.target_model._make_predict_function()
 
-    def create_model(self):
+    def create_model(self, optimizer, epsilon):
         """Return a compiled model and the state and action
-        input layers.
+        input layers with the given optimizer and epsilon.
         """
         inputs = Input(shape=(self.state_shape,))
         action_input = Input(shape=(self.action_shape,))
@@ -53,9 +54,14 @@ class Critic:
         outputs = Dense(self.action_shape)(x)
 
         model = Model(inputs=[inputs, action_input], outputs=outputs)
-        model.compile(optimizer=Adam(lr=self.alpha), loss='mse')
-        # model.compile(optimizer=RMSprop(lr=0.1), loss='mse')
-        # model.compile(optimizer=SGD(lr=0.1), loss='mse')
+
+        optimizer = optimizer.lower()
+        assert optimizer in ['adam', 'rmsprop']
+        if optimizer == 'adam':
+            opti = Adam(lr=self.alpha, epsilon=epsilon)
+        else:
+            opti = RMSprop(lr=self.alpha, epsilon=epsilon)
+        model.compile(optimizer=opti, loss='mse')
         return model, inputs, action_input
 
     def get_gradients(self, states, actions):
