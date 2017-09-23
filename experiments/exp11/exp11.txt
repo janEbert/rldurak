@@ -51,3 +51,6 @@ action_shape = 5
 (default)
 
 
+Finished 10000/10000 episodes after 16671.12 seconds; average: 1.67 seconds per episode
+Kraudia won 3973/10000 games which is a win rate of 39.73 %
+The neural network was trained a total of 92112 times
