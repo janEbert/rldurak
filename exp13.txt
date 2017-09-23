@@ -1,7 +1,7 @@
 episodes = 10000
 # whether only AIs are in the game or one AI and random bots
-only_ais = False
-load = False # whether to load the models' weights
+only_ais = True
+load = True # whether to load the models' weights
 verbose = False # whether to print game progress
 feature_type = 2 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
@@ -48,14 +48,5 @@ wait_until_defended = True
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
-(default)
-
-
-test for which reward weights are better
-second run because of local minimum
-
-also from now on faster calculactions because of sse4.2 and sse4.1 support
-
-Finished 10000/10000 episodes after 33180.30 seconds; average: 3.32 seconds per episode
-Kraudia won 4291/10000 games which is a win rate of 42.91 %
-The neural network was trained a total of 93181 times
+['Alice', 'Kraudia']
+(rest default)

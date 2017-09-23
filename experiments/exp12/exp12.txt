@@ -52,3 +52,5 @@ action_shape = 5
 
 
 test for which reward weights are better
+
+ended badly, see remake
