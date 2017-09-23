@@ -25,13 +25,14 @@ class Critic:
         self.sess = sess
         self.state_shape = state_shape
         self.action_shape = action_shape
+        self.optimizer_choice = optimizer.lower()
         self.alpha = alpha
         self.tau = tau
         self.n1 = n1
         self.n2 = n2
         K.set_session(sess)
         self.model, self.state_input, self.action_input = self.create_model(
-                optimizer, epsilon)
+                epsilon)
         self.target_model = self.create_model()[0]
         self.action_gradients = K.gradients(self.model.output,
                 self.action_input)
@@ -41,9 +42,9 @@ class Critic:
                 self.model._make_predict_function()
                 self.target_model._make_predict_function()
 
-    def create_model(self, optimizer, epsilon):
-        """Return a compiled model and the state and action
-        input layers with the given optimizer and epsilon.
+    def create_model(self, epsilon):
+        """Return a compiled model and the state and action input
+        layers with the given epsilon for numerical stability.
         """
         inputs = Input(shape=(self.state_shape,))
         action_input = Input(shape=(self.action_shape,))
@@ -55,9 +56,8 @@ class Critic:
 
         model = Model(inputs=[inputs, action_input], outputs=outputs)
 
-        optimizer = optimizer.lower()
-        assert optimizer in ['adam', 'rmsprop']
-        if optimizer == 'adam':
+        assert self.optimizer_choice in ['adam', 'rmsprop']
+        if self.optimizer_choice == 'adam':
             opti = Adam(lr=self.alpha, epsilon=epsilon)
         else:
             opti = RMSprop(lr=self.alpha, epsilon=epsilon)
@@ -81,13 +81,15 @@ class Critic:
     def save_weights(self, file_name=None):
         """Save the current model's weights."""
         if file_name is None:
-            file_name = 'critic-' + str(self.state_shape) + '-features.h5'
+            file_name = 'critic-' + self.optimizer_choice + '-' \
+                    + str(self.state_shape) + '-features.h5'
         self.model.save_weights(file_name)
 
     def load_weights(self, file_name=None):
         """Load the saved weights for the model and target model."""
         if file_name is None:
-            file_name = 'critic-' + str(self.state_shape) + '-features.h5'
+            file_name = 'critic-' + self.optimizer_choice + '-' \
+                    + str(self.state_shape) + '-features.h5'
         try:
             self.model.load_weights(file_name)
             self.target_model.load_weights(file_name)
