@@ -33,7 +33,7 @@ class Critic:
         K.set_session(sess)
         self.model, self.state_input, self.action_input = self.create_model(
                 epsilon)
-        self.target_model = self.create_model()[0]
+        self.target_model = self.create_model(epsilon)[0]
         self.action_gradients = K.gradients(self.model.output,
                 self.action_input)
         self.sess.run(tf.global_variables_initializer())
