@@ -325,7 +325,7 @@ class Game:
                 for card in cards:
                     self.features[card.index] = -1
                 self.feature_lock.release()
-            if self.feature_type == 2:
+            elif self.feature_type == 2:
                 self.feature_lock.acquire()
                 for card in cards:
                     self.features[self.field_index + card.index] = 1
