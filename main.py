@@ -58,7 +58,7 @@ wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
 # difference in mean trump value and difference in trump amount
-weights = (4, 3, 6)
+weights = (1, 2, 2)
 # whether the features always contain 52 cards even though less are
 # necessary (so that shape is the same for any amount of cards)
 buffer_features = False
