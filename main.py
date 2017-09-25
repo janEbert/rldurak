@@ -851,11 +851,12 @@ if __name__ == '__main__':
     print('The neural network was trained a total of {0} times'.format(
             training_counter))
     print('Saving data...')
+    if sys.version_info[0] == 2:
+        prefix = '/media/data/jebert/'
+        if not exists(prefix):
+                prefix = ''
     if not only_ais:
         if sys.version_info[0] == 2:
-            prefix = '/media/data/jebert/'
-            if not exists(prefix):
-                prefix = ''
             file_name = prefix + 'win_stats_'
         elif sys.version_info[0] == 3:
             file_name = 'win_stats_'
