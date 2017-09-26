@@ -1,4 +1,4 @@
-episodes = 10000
+episodes = 5000
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
@@ -9,7 +9,7 @@ feature_type = 1 # 1, 2 or (unsupported) 3
 # linearly anneals min_epsilon in the first epsilon_episodes episodes
 min_epsilon = 0.1
 epsilon_start = 1 # if not load else min_epsilon
-epsilon_episodes = 6000
+epsilon_episodes = 3000
 optimizer = 'adam' # 'adam' or 'rmsprop'
 # learning rates
 alpha_actor = 0.001
@@ -17,7 +17,7 @@ alpha_critic = 0.01
 # numerical stability epsilon (recommended to change when using Adam!)
 epsilon_actor = 1e-8
 epsilon_critic = 1e-8
-# update factors
+# update factors for target models
 tau_actor = 0.01
 tau_critic = 0.01
 # number of hidden neurons in each layer
@@ -28,8 +28,8 @@ n2_critic = 50
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
-win_reward = 8
-loss_reward = -8
+win_reward = 50
+loss_reward = -50
 wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
@@ -49,7 +49,11 @@ chi_sigma = 0.1
 # whether the agent waits until all cards are defended before
 # it attacks
 
+deck_size = 36
+hand_size = 6
 
-test for fitted rewards
+
+test for full classic game
+
 
 
