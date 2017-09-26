@@ -51,54 +51,7 @@ action_shape = 5
 names = ['Alice']
 deck_size = 12
 hand_size = 3
-trump_suit = 2 # hearts (better not change this for consistency)episodes = 10000
-# whether only AIs are in the game or one AI and random bots
-only_ais = False
-load = False # whether to load the models' weights
-verbose = False # whether to print game progress
-feature_type = 2 # 1, 2 or (unsupported) 3
-# epsilon_start is the starting value for how often a random action is
-# taken by AIs
-# linearly anneals min_epsilon in the first epsilon_episodes episodes
-min_epsilon = 0.1
-epsilon_start = 1 # if not load else min_epsilon
-epsilon_episodes = 6000
-# learning rates
-alpha_actor = 0.001
-alpha_critic = 0.01
-# update factors
-tau_actor = 0.01
-tau_critic = 0.01
-# number of hidden neurons in each layer
-n1_actor = 100
-n1_critic = 100
-n2_actor = 50
-n2_critic = 50
-gamma = 0.99 # discount factor
-max_experience_count = 500 # amount of experiences to store
-batch_size = 32 # amount of experiences to replay
-win_reward = 12
-loss_reward = -12
-wait_reward = -0.05
-illegal_action_reward = -100 # if >=0, do not reward illegal actions
-# weights for difference in mean hand card value without trumps,
-# difference in mean trump value and difference in trump amount
-weights = (1, 2, 2)
-# whether the features always contain 52 cards even though less are
-# necessary (so that shape is the same for any amount of cards)
-buffer_features = False
-# how often random bots wait
-# calculated from a normal distribution with the given values
-psi_mu = 0.95
-psi_sigma = 0.1
-# how often bots check
-# calculated from a normal distribution with the given values
-chi_mu = 0.08
-chi_sigma = 0.1
-# whether the agent waits until all cards are defended before
-# it attacks
-wait_until_defended = True
-action_shape = 5
+trump_suit = 2 # hearts (better not change this for consistency)
 
 # 'Kraudia' is added automatically if only_ais is false
 (default)

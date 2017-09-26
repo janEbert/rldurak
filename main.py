@@ -41,7 +41,7 @@ alpha_critic = 0.01
 # numerical stability epsilon (recommended to change when using Adam!)
 epsilon_actor = 1e-8
 epsilon_critic = 1e-8
-# update factors
+# update factors for target models
 tau_actor = 0.01
 tau_critic = 0.01
 # number of hidden neurons in each layer

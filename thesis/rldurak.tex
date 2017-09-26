@@ -12,7 +12,7 @@
 \usepackage[justification=centering]{caption}
 \usepackage[hidelinks]{hyperref}
 \usepackage[nottoc,numbib]{tocbibind}
-%\usepackage{booktabs}
+\usepackage{booktabs}
 
 \widowpenalty=300
 \clubpenalty=300
@@ -23,6 +23,8 @@
 
 \newcommand{\Exp}[3]{\Expectation_{#1} \left[ #2 \ \middle| \ #3 \right]}
 \newcommand{\Ex}[2]{\Expectation_{#1} \left[ #2 \right]}
+
+\newcommand{\expn}[2]{{#1}\mathrm{e}{#2}}
 
 \title{Reinforcement Learning for Durak \\ \medskip \large{Bachelor's Thesis on Reinforcement Learning}}
 %\subtitle{Bachelor's Thesis on Reinforcement Learning}
@@ -219,14 +221,63 @@ The code for the actor and critic networks and subsequently their learning was h
 \section{Experiments}
 
 The experiments in this section were mostly conducted with different versions of the code because improvements were continuously added. In the earlier experiments, some data was lost due to access issues but since those were more primitive approaches, it should not be much of an issue.
-The low win rate of the agent at the beginning of the experiments can be explained because the agent and the bot do not execute the same random behaviour. For example, the bot has a fixed probability for checking each game while the agent will check with the same probability as any other action.
+
+Recall that in this section, I will focus on a reduced version of durak with only 12 cards in the deck, 3 cards in hand and two players. The most prevalent reason for this is time: Not only do the games finish earlier but also the feature vector is smaller leading to fewer computations per training step.
+Also, because the game is simpler, it is easier for the agent to learn. When good results for the downscaled version are achieved, the parameters found can be applied to the full game.
+
+The low win rate of the agent at the beginning of the experiments can be explained because the agent and the bot do not execute the same random behaviour. While the bot has a fixed probability for checking each game, the agent will check with the same probability as any other action.
+
+
 
 \newpage
 
 \section{Appendix}
 \label{sec:appendix}
 
-The code is available online on GitHub at \url{github.com/janEbert/rldurak}.
+The code is available online on GitHub at \url{github.com/janEbert/rldurak}. \bigskip
+
+\begin{table}[h]
+\centering
+  \begin{tabular}{lrl}
+    \toprule
+    Parameter & Value & Description \\
+    \midrule
+    episodes & 10000 \\
+    feature type & 2 \\
+    $\epsilon$ start & 1 & linearly anneal min $\epsilon$ from this\\
+    min $\epsilon$ & 0.1 & $\epsilon$ does not decrease further than this \\
+    $\epsilon$ episodes & 6000 & linearly anneal in this many episodes \\
+    optimizer & Adam \\
+    $\alpha$ actor & 0.001 & learning rate \\
+    $\alpha$ critic & 0.01 \\
+    $\varepsilon$ actor & $\expn{1}{-8}$ & $\varepsilon$ for numerical stability \\
+    $\varepsilon$ critic & $\expn{1}{-8}$ \\
+    $\tau$ actor & 0.01 & target model update factor \\
+    $\tau$ critic & 0.01 \\
+    $n_1$ actor & 100 & neurons in the first hidden layer \\
+    $n_1$ critic & 100 \\
+    $n_2$ actor & 50 & neurons in the second hidden layer \\
+    $n_2$ critic & 50 \\
+    $\gamma$ & 0.99 & discount factor \\
+    max experience count & 500 \\
+    batch size & 32 \\
+    win reward & 12 \\
+    loss reward & ${-12}$ \\
+    wait reward & $-0.05$ \\
+    illegal action reward & $-100$ \\
+    $w_v$ & 1 & weight for difference in mean card value \\
+    $w_t$ & 2 & weight for difference in mean trump value \\
+    $w_c$ & 2 & weight for difference in trump amount \\
+    $\psi_\mu$ & 0.95 & mean value for how often bots wait \\
+    $\psi_\sigma$ & 0.1 & standard deviation for how often bots wait \\
+    $\chi_\mu$ & 0.08 & mean value for how often bots check \\
+    $\chi_\sigma$ & 0.1 & standard deviation for bots checking \\
+    wait until defended & true & agent attacking behaviour \\
+    \bottomrule
+  \end{tabular}
+  \caption{Default parameters for the experiments}
+  \label{table:parameters}
+\end{table}
 
 \newpage
 
