@@ -52,4 +52,6 @@ chi_sigma = 0.1
 
 another numerical stability epsilon test
 
-
+Finished 10000/10000 episodes after 17570.26 seconds; average: 1.76 seconds per episode
+Kraudia won 4387/10000 games which is a win rate of 43.87 %
+The neural network was trained a total of 94824 times
