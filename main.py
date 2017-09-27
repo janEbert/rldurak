@@ -22,18 +22,18 @@ import game.player as player_m
 import game.field as field
 import game.game as game_m
 
-episodes = 10000
+episodes = 5000
 # whether only AIs are in the game or one AI and random bots
 only_ais = False
 load = False # whether to load the models' weights
 verbose = False # whether to print game progress
-feature_type = 2 # 1, 2 or (unsupported) 3
+feature_type = 1 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
 # taken by AIs
 # linearly anneals min_epsilon in the first epsilon_episodes episodes
 min_epsilon = 0.1
 epsilon_start = 1 # if not load else min_epsilon
-epsilon_episodes = 6000
+epsilon_episodes = 3000
 optimizer = 'adam' # 'adam' or 'rmsprop'
 # learning rates
 alpha_actor = 0.001
@@ -77,8 +77,8 @@ action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
 names = ['Alice', 'Kraudia']
-deck_size = 12
-hand_size = 3
+deck_size = 36
+hand_size = 6
 trump_suit = 2 # hearts (better not change this for consistency)
 
 
@@ -195,20 +195,21 @@ def main_loop():
             except queue.Empty:
                 clear_threads()
                 return False, training_counter
-            state = game.features.copy()
-            if game.players[player_ix].checks or action[0] == 4:
+            if game.players[player_ix].checks:
                 action_queue.task_done()
-                if action[0] == 4:
-                    if only_ais:
-                        store_experience((state[player_ix], action,
-                                wait_reward, state[player_ix]))
-                    elif player_ix == game.kraudia_ix:
-                        store_experience((state, action, wait_reward, state))
-                    threads[active_player_indices.index(player_ix)].event.set()
                 continue
+            state = game.features.copy()
             if only_ais or player_ix == game.kraudia_ix:
-                if last_experiences[player_ix] is not None:
-                    store_experience(last_experiences[player_ix])
+                experience = last_experiences[player_ix]
+                if experience is not None:
+                    if experience[1] == game.wait_action():
+                        if only_ais:
+                            store_experience(experience[:3]
+                                    + (state[player_ix],))
+                        else:
+                            store_experience(experience[:3] + (state,))
+                    else:
+                        store_experience(last_experiences[player_ix])
                     last_experiences[player_ix] = None
             if verbose:
                 print(action_to_string(player_ix, action))
@@ -301,6 +302,16 @@ def main_loop():
                 continue
             elif action[0] == 3:
                 game.check(player_ix)
+            elif action[0] == 4:
+                action_queue.task_done()
+                if only_ais:
+                    last_experiences[player_ix] = (state[player_ix], action,
+                            wait_reward, None)
+                elif player_ix == game.kraudia_ix:
+                    last_experiences[player_ix] = (state, action, wait_reward,
+                            None)
+                threads[active_player_indices.index(player_ix)].event.set()
+                continue
             if verbose:
                 print(game.field, '\n')
             action_queue.task_done()
@@ -407,12 +418,11 @@ def update_last_experience(last_experiences, player_ix, reward):
     """Update the last experience stored for the given player index
     with the given reward and current game state and remove it.
     """
-    exp = last_experiences.pop(player_ix)
+    experience = last_experiences.pop(player_ix)
     if only_ais:
-        store_experience((exp[0], exp[1], reward,
-                game.features[player_ix]))
+        store_experience(experience[:2] + (reward, game.features[player_ix]))
     else:
-        store_experience((exp[0], exp[1], reward, game.features))
+        store_experience(experience[:2] + (reward, game.features))
     return last_experiences
 
 
@@ -439,19 +449,19 @@ def reward_winner_from_last_experience(last_experiences, player_ix):
     the last experiences accordingly.
 
     Also reward loser if there is one already."""
-    exp = last_experiences[player_ix]
+    experience = last_experiences[player_ix]
     if only_ais:
-        store_experience((exp[0], exp[1], win_reward,
-                game.features[player_ix]))
+        store_experience(experience[:2]
+                + (win_reward, game.features[player_ix]))
     elif player_ix == game.kraudia_ix:
-        store_experience((exp[0], exp[1], win_reward, game.features))
+        store_experience(experience[:2] + (win_reward, game.features))
     if game.will_end():
-        exp = last_experiences[1 - player_ix]
+        experience = last_experiences[1 - player_ix]
         if only_ais:
-            store_experience((exp[0], exp[1], loss_reward,
-                    game.features[1 - player_ix]))
+            store_experience(experience[:2]
+                    + (loss_reward, game.features[1 - player_ix]))
         elif player_ix != game.kraudia_ix and game.kraudia_ix >= 0:
-            store_experience((exp[0], exp[1], loss_reward, game.features))
+            store_experience(experience[:2] + (loss_reward, game.features))
         return {}
     return remove_from_last_experiences(last_experiences, player_ix)
 
