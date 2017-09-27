@@ -8,7 +8,7 @@ feature_type = 2 # 1, 2 or (unsupported) 3
 # taken by AIs
 # linearly anneals min_epsilon in the first epsilon_episodes episodes
 min_epsilon = 0.1
-epsilon_start = 0.1 # if not load else min_epsilon
+epsilon_start = 1 # if not load else min_epsilon
 epsilon_episodes = 6000
 # learning rates
 alpha_actor = 0.001

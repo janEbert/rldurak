@@ -1,6 +1,6 @@
 \documentclass[a4paper,titlepage]{article}
 
-\hyphenation{Du-rak}
+\hyphenation{Du-rak Krau-dia}
 
 \usepackage{amsmath, amssymb}
 
@@ -16,6 +16,8 @@
 
 \widowpenalty=300
 \clubpenalty=300
+
+% TODO REMOVE ORPHANS!
 
 \DeclareMathOperator{\Expectation}{\mathbb{E}}
 \DeclareMathOperator*{\argmax}{arg\,max}
@@ -86,9 +88,9 @@ Durak, like most older card games, can have a lot of variations, starting with t
 The goal of the game is to get rid of one's cards so as not to be the durak (Russian: Дурак, meaning ``fool''). First, a deck is shuffled and each player is dealt six cards (or, for example, only five if there are not enough cards -- durak is very flexible) and one card is laid on the table for everyone to see. This is the card determining the trump suit for the current game. The deck is placed on the open card as a talon. The revealed card is part of the talon, so the last card drawn is always a trump.
 There are two phases in the game: When the talon is not empty, players redraw cards from it and can not yet win. When it has been completely drawn, players can start emptying their hands and ultimately win. However, this is not exactly correct, as in durak, there is no winner, only a loser. I will, however, use the term winner for ``not loser''. \medskip
 
-The player with the lowest trump begins the game (if there are duplicates and several players have the lowest trump, the next lowest trump could be taken instead). They attack with a card of their choice that the next player in clockwise order then has to defend by placing a card of the same suit with a higher value onto it. The defending player can also use a trump to defend any card except another trump with a higher value. The defender's neighbours, the first and second attacker, can place any card whose value is already on the table as another attack (so the attackers can also instantly place two or more cards of the same value on the table). They can do this until there are either six (or, depending on the hand size, another value) attack cards on the table or as many attack cards as the defender has cards remaining in his hand. In classic durak, only five cards can be placed before the first successful defense but I will do without this rule.
+The player with the lowest trump begins the game (if there are duplicates and several players have the lowest trump, the next lowest trump could be taken instead). They attack with a card of their choice that the next player in clockwise order then has to defend by placing a card of the same suit with a higher value onto it. The defending player can also use a trump to defend any card except another trump with a higher value. The defender's neighbours, the first and second attacker, can place any card whose value is already on the table as another attack (so the attackers can also instantly place two or more cards of the same value on the table). They can do this until there are either six (or, depending on the hand size, another value) attack cards on the table or as many attack cards as the defender has cards remaining in his hand. In classic durak, only five cards can be placed before the first successful defence but I will do without this rule.
 
-If the defense is successful, that means that no attacker can or wants to put another card as an attack (they \emph{check}), all cards on the table are removed and the players draw from the talon in order of attackers with the defender always drawing last. The defender then attacks the next player.
+If the defence is successful, that means that no attacker can or wants to put another card as an attack (they \emph{check}), all cards on the table are removed and the players draw from the talon in order of attackers with the defender always drawing last. The defender then attacks the next player.
 If the defending player cannot defend all cards, they must pick up every card on the table and cannot start attacking the next round. Instead, the player coming after the defender begins after the players drew cards like before. When the defender signals that they cannot defend (this is also checking), the attackers can still place (legal) cards that the defender also has to take. As before, the amount of attack cards cannot exceed the hand size or the amount of cards in the defender's hand.
 When a player has no cards left, they are out of the game and cannot become durak. In most versions, the finished player's place is taken by the player coming before them only after an attack has ended but in my version, they immediately move up.
 Another rule that is not in classic durak is pushing. Pushing means that, when no card has been defended, the defender can put a card of the same value as the attacking card (or cards) next to it (instead of covering it) and \emph{push} the attack to the next player who then has to defend all cards as usual. The new defender's neighbours are the only attackers, so the original first attacker has no further part in the attack (unless they are the defender's neighbour again).
@@ -176,11 +178,12 @@ This idea can also be generalized for any amount of players thereby solving its 
 The end goal is to find an agent that can play any durak game well. Using a general state vector, one can test whether the agent is able to generalize on other variants of durak which would be very interesting. 
 Because the amount of cards in the deck also changes, the vector's size can be buffered to contain the maximum allowed number of cards (52 for a standard deck without duplicates). Only the cards in the game are tracked while the other ones are seen as out of the game. The generalization capabilities of the neural networks should make this approach possible.
 
-Since the game is played in real time and the actions of the other players influence the game state, it is very hard for the agent to understand state changes. For example, assume that the agent defends and checks. The other players now attack with their cards until the maximum allowed number of cards is placed so the attack ends. Now the agent only sees the state of when it checked and the state when the attack ended. Thus, the agent learns that checking changed much more in the game than it actually did because a lot has happened in between that the agent had no influence on. Also, it is hard to assign which action was actually a good one. A game of durak can be won because of a lot of different decisions. Sometimes it is good to keep a low-value card because it can be used for pushing while in other cases it will be stuck in hand until the very end when it should not be used for attacking because it can easily be defended. It is really hard to put a finger on when an intelligent decision occured because there are many decisions and the actual, ``real'' reward (in the sense that it is not modeled but part of the game) is only received at the very end when it is clear that the agent has won or lost. To heuristically solve this, reward can be given based on the difference in average card value or amount of trumps in hand. If either of these increases after an attack, it is usually positive for the player because the stronger cards can be used later to defend more easily or to place an attack that the other player cannot defend. This problem of credit assignment cannot easily be solved though. A lot of planning has to go into why a decision is good or why it is not and reward given during the game has to be based on that.
+Since the game is played in real time and the actions of the other players influence the game state, it is very hard for the agent to understand state changes. For example, assume that the agent defends and checks. The other players now attack with their cards until the maximum allowed number of cards is placed so the attack ends. Now the agent only sees the state of when it checked and the state when the attack ended. Thus, the agent learns that checking changed much more in the game than it actually did because a lot has happened in between that the agent had no influence on. Also, it is hard to assign which action was actually a good one. A game of durak can be won because of a lot of different decisions. Sometimes it is good to keep a low-value card because it can be used for pushing while in other cases it will be stuck in hand until the very end when it should not be used for attacking because it can easily be defended. It is really hard to put a finger on when an intelligent decision occurred because there are many decisions and the actual, ``real'' reward (in the sense that it is not modeled but part of the game) is only received at the very end when it is clear that the agent has won or lost. To heuristically solve this, reward can be given based on the difference in average card value or amount of trumps in hand. If either of these increases after an attack, it is usually positive for the player because the stronger cards can be used later to defend more easily or to place an attack that the other player cannot defend. This problem of credit assignment cannot easily be solved though. A lot of planning has to go into why a decision is good or why it is not and reward given during the game has to be based on that.
 
 \newpage
 
 \section{Implementation}
+\label{sec:implementation}
 
 For where to find the code, see \hyperref[sec:appendix]{section~\ref*{sec:appendix}}.
 
@@ -220,12 +223,51 @@ The code for the actor and critic networks and subsequently their learning was h
 
 \section{Experiments}
 
-The experiments in this section were mostly conducted with different versions of the code because improvements were continuously added. In the earlier experiments, some data was lost due to access issues but since those were more primitive approaches, it should not be much of an issue.
+The experiments in this section were mostly conducted with different versions of the code because improvements were continuously added. In the earlier experiments, some data was lost due to access issues but this will not affect the documentation in any way.
+To save space, \hyperref[table:parameters]{table~\ref*{table:parameters} on page~\pageref*{table:parameters}} lists the default parameters.
+I will only document changes to those parameters; the ones not mentioned will have the same value as in the table. For each section, assume that parameters are set to the default parameters again. The $\varepsilon$ in the table, described as ``$\varepsilon$ for numerical stability'' is a different one from the $\epsilon$ for the $\epsilon$-greedy strategy. $\varepsilon$ is a parameter for the optimizers which mostly affects Adam. The documentation of TensorFlow states that it is recommended to change this value from the default of $\expn{1}{-8}$ because it might not be a good choice~\cite{tfadam}. For no real reason despite wanting to include it, I will from now on call the agent \emph{Kraudia}.
 
 Recall that in this section, I will focus on a reduced version of durak with only 12 cards in the deck, 3 cards in hand and two players. The most prevalent reason for this is time: Not only do the games finish earlier but also the feature vector is smaller leading to fewer computations per training step.
-Also, because the game is simpler, it is easier for the agent to learn. When good results for the downscaled version are achieved, the parameters found can be applied to the full game.
+Also, because the game is simpler, it is easier for Kraudia to learn. When good results for the downscaled version are achieved, the parameters found are applied to the full game.
 
-The low win rate of the agent at the beginning of the experiments can be explained because the agent and the bot do not execute the same random behaviour. While the bot has a fixed probability for checking each game, the agent will check with the same probability as any other action.
+Kraudia's low win rate at the beginning of each experiment can be explained because Kraudia and the bot do not execute the same random behaviour. While the bot has a fixed probability for checking each game, Kraudia will check with the same probability as any other action. Discrepancies in run time of the program arise because the computers used for the calculations are also used by other users. Therefore if during one experiment, more users access the computer for calculations, the run time deviates a lot more than if no other person was using it. When I mention time per episode, I refer to the average time per episode during an experiment. The time per episode probably varies a lot for two reasons: First, it is faster to calculate a random value than to pass through the actor network and secondly, the less random actions Kraudia executes, the more illegal ones are executed until she learns that they are, in fact, illegal. Then, obviously, less illegal actions are selected again.
+
+\subsection{First Steps (1 to 4)}
+
+For all the experiments in this section, I used feature type 2 (binary features for each card in each player's hand), and for both networks a learning rate of 0.001, an update factor of 0.001 and only 50 neurons in the first hidden layer. The rewards for winning, losing and waiting were 70, $-70$ and $-1$ respectively. During the experiments, I used a very naive reward system that always rewarded zero when an attack ended except for when the defender had to take the cards. The reward for an unsuccessful defence is then given as the amount of cards taken (including the cards put by the defender).
+
+During the first two experiments, $\epsilon$ did not change after each episode but after each action by any player which was too fast.
+The very first experiment ran only for 1\,000 episodes. After that, because it finished much more quickly than expected -- in about 48 minutes with nearly 2.88 seconds per episode --, I increased the amount of episodes to 10\,000.
+Three players (two random bots and the agent) were still in the game. The first experiment's results, being more of a test run, were bad: The win rate was low and rose only a little at the very end. Experiment two, running for 10\,000 episodes but with the same parameters, finished in about 7 hours with approximately 2.5 seconds per episode and shows a spike in win rate a little before episode 6\,000. This spike is sadly only temporary and falls down to a win rate that is worse than playing at random. The reason for the bad win rate is the amount of players: While Kraudia calculates her moves or is stuck at illegal actions, the other bots may have already acted placing all their cards before Kraudia could react. That is the reason why after experiment 3, the player count was decreased to two, eliminating the problem. % TODO include graphic
+
+As already mentioned, all experiments from now on have another behaviour for $\epsilon$, only decreasing it at the end of each episode.
+Except for the learning rate for the critic which was set to 0.01, the parameters were the same as for experiment 2. Experiment 3 took about 5 hours and 19 minutes to complete with around 1.92 seconds per episode. First, the win rate continually decreases with $\epsilon$ but shows some spikes during episodes 6\,100 to 6\,400 and 7\,500 to 8\,300 after $\epsilon$ has reached 0.1. Still, the 50~\% margin is not achieved in a stable manner.
+
+For this experiment and the future ones, the player count was reduced to two. Except for the learning rates which were reduced by a factor of 10 for both networks, setting them to 0.0001 and 0.001 for the actor and critic respectively, the parameters follow experiment 3. Removing the third player accelerated the simulations a lot: With about 0.76 seconds per episode, the experiment finished in a little over 2 hours. Achieving only very minor spikes in the win rate, Kraudia's results were absolutely unsatisfactory. Learning was not occurring and the wins can be attributed to luck. \medskip
+
+Therefore, change in the naive reward system was necessary.
+
+\subsection{Reward Sophistication and Breakthrough (5 to 9)}
+
+For all following experiments, the reward system as explained in \hyperref[sec:implementation]{section~\ref*{sec:implementation}} was used. Because I was not ready to experiment yet, the feature type is still set to 2 for all experiments. Except when mentioned otherwise, experiments in this section use 50 neurons in the first hidden layer for both networks.
+
+Experiments 5 and 6 used a learning rate of 0.0001 for the actor and 0.001 for the critic. Also, both network's update factors were set to 0.001. The only difference in parameters is that experiment 6 uses 100 neurons in the first hidden layer for both networks.
+Increasing the number of neurons proved to be important although with drawbacks: In contrast to experiment 5 in which results suddenly peaked at the end at about 50~\% after decreasing to zero before, experiment 6 shows much more stable learning. However, one of the aforementioned drawbacks is that at the end of experiment 6, the stability is no more and results start dropping. The other is that while experiment 5 finished in roughly 2 hours and 17 minutes with about 0.82 seconds per episode, experiment 6 took slightly over 7 hours with around 2.55 seconds per episode. This is a dramatic increase in run time easily explainable by the amount of parameters to train: With a feature vector of size 52 as in the experiments, two hidden layers with 50 neurons each result in 5\,350 parameters while having 100 neurons in the first and 50 neurons in the second layer results in 10\,450 trainable weights --  almost twice as many. There is another reason for the huge increase in run time: Due to Kraudia playing better, games take a longer time to finish.
+
+Except for the changes mentioned at the beginning of this section, experiment 7 has the default parameters. Learning was less stable than in experiment 6 but when results peaked, they were almost constant (although sadly only for some thousand episodes). It took less than 4 hours for experiment 7 to complete with about 1.39 seconds per episode. Experiment 8 had the same parameters as experiment 7 except for the update factor which was reduced to 0.001 for both networks. This increased stability by a great deal. Results oscillated much less than in experiment 6 while achieving a win rate above 50~\% for some periods. Sadly, at the end results again suddenly dropped by a large margin.
+
+Combining the amount of neurons in experiment 6 and the learning rates and update factor in 7, we arrive at the default parameters (except for the feature type which is still 2) which were also used for experiment 9. I consider this experiment the breakthrough because not only did Kraudia achieve a stable win rate over 50~\% (after a few initial hiccups) but also the results did not drop at the end of the experiment suggesting that -- hopefully -- a more static solution has been found. % TODO visual
+\medskip
+
+Looking at the past five experiments, a very interesting pattern can be found: The better the agent becomes, the longer the games take. The following numbers denote the amount of times the agent has learned from a batch from memory. Going from worst to best, in experiment 5 where bad results were observed (18.63~\% total win rate), the network was trained about 79\,896 times. Experiment 7 had a total win rate that was roughly 9 percentage points (pp) better and was trained 83\,938 times. For experiment 6, the amount of training increased to 90\,576 even though the total win rate was only almost 5~pp better. This is because the win rate -- and subsequently game length -- was much more stable during experiment 6. With a total win rate of 41.79~\%, in experiment 8 the network was trained 92\,082 times. Experiment 9 takes the cake with 93\,993 training runs and a total win rate of 43.29~\%.
+
+\subsection{Further Parameter Tuning (10 to 20)}
+
+\medskip
+
+Even with all the previous parameter tuning, I was not able to increase Kraudia's total win rate from experiment 9 (43.29~\%) by a lot (only experiments 16 with 44.99~\% and 18 with 43.87~\% rose above). Finally, realising that the problem was not that Kraudia did not learn enough but that the problem was already solved, the game's parameters were modified to increase the complexity of the game. Because there are only twelve cards in the game and only three cards in hand, the game is bound to be more influenced by chance. I believe that Kraudia already played nearly optimally but could not reliably overcome the 60~\% margin because even the random bots can win that much based solely on luck with the downscaled version of durak that was used in all previous experiments.
+
+\subsection{Adding Complexity (21 to )} %TODO
 
 \newpage
 
@@ -246,11 +288,11 @@ The code is available online on GitHub at \url{github.com/janEbert/rldurak}. \bi
     \toprule
     Parameter & Value & Description \\
     \midrule
-    episodes & 10000 \\
-    feature type & 2 \\
+    episodes & 10\,000 \\
+    feature type & 1 \\
     $\epsilon$ start & 1 & linearly anneal min $\epsilon$ from this\\
     min $\epsilon$ & 0.1 & $\epsilon$ does not decrease further than this \\
-    $\epsilon$ episodes & 6000 & linearly anneal in this many episodes \\
+    $\epsilon$ episodes & 6\,000 & linearly anneal in this many episodes \\
     optimizer & Adam \\
     $\alpha$ actor & 0.001 & learning rate \\
     $\alpha$ critic & 0.01 \\
@@ -333,6 +375,11 @@ The code is available online on GitHub at \url{github.com/janEbert/rldurak}. \bi
   Lau, Ben. ``Using Keras and Deep Deterministic Policy Gradient to play TORCS.'' \emph{GitHub Pages}. GitHub, 11 Oct. 2016. Web.
   8 Sep. 2017.,
   \url{yanpanlau.github.io/2016/10/11/Torcs-Keras.html}
+
+\bibitem{tfadam}
+  Google Brain Team. ``tf.train.AdamOptimizer.'' \emph{TensorFlow}. Google Brain Team, API r1.3, 17 Aug. 2017. Web.
+  23 Sep. 2017.,
+  \url{https://www.tensorflow.org/api_docs/python/tf/train/AdamOptimizer}
 
 \bibitem{her}
   Andrychowicz, Marcin, et al. ``Hindsight Experience Replay.'' \emph{arXiv.org}. arXiv:1707.01495v2, 10 Jul. 2017, Web.
