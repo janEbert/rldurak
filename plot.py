@@ -33,21 +33,21 @@ def main(win_stats, count, epsilon_start, min_epsilon, epsilon_episodes):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print('Usage: plot.py win_stats.npy '
-                '[number of wins to average over=100] [epsilon_start=1] '
-                '[min_epsilon=0.1] [epsilon_episodes=6000]')
+        print('Usage: plot.py win_stats.npy [epsilon_start=1] '
+                '[min_epsilon=0.1] [epsilon_episodes=6000] '
+                '[number of wins to average over=100]')
     else:
         win_stats = np.load(sys.argv[1], allow_pickle=False)
-        if len(sys.argv) > 2:
-            count = int(sys.argv[2])
-        else:
-            count = 100
-        if len(sys.argv) > 3:
-          epsilon_start = float(sys.argv[3])
-          min_epsilon = float(sys.argv[4])
-          epsilon_episodes = int(sys.argv[5])
+        if len(sys.argv) > 4:
+          epsilon_start = float(sys.argv[2])
+          min_epsilon = float(sys.argv[3])
+          epsilon_episodes = int(sys.argv[4])
         else:
           epsilon_start = 1
           min_epsilon = 0.1
           epsilon_episodes = 6000
+        if len(sys.argv) > 5:
+            count = int(sys.argv[5])
+        else:
+            count = 100
         main(win_stats, count, epsilon_start, min_epsilon, epsilon_episodes)
