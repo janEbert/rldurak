@@ -767,8 +767,10 @@ class ActionReceiver(threading.Thread):
             else:
                 state = game.features.copy()
             game.feature_lock.release()
+            model_lock.acquire()
             action = [int(v) for v in actor.model.predict(
                     state.reshape(1, state.shape[0]))[0]]
+            model_lock.release()
             # TODO maybe remove?
             if action[0] in [0, 2, 3, 4]:
                 action[3] = -1
@@ -913,6 +915,7 @@ if __name__ == '__main__':
     epsilon_step = (epsilon_start - min_epsilon) / float(epsilon_episodes)
     experiences = []
     experience_ix = 0
+    model_lock = threading.Lock()
     if not only_ais:
         win_stats = np.zeros(episodes, dtype=np.int8)
 
