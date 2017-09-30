@@ -56,4 +56,6 @@ hand_size = 6
 test for full game
 
 
-
+Finished 5000/5000 episodes after 109799.60 seconds; average: 21.96 seconds per episode
+Kraudia won 2810/5000 games which is a win rate of 56.20 %
+The neural network was trained a total of 330938 times
