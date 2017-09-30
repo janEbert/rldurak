@@ -3,6 +3,7 @@ import threading
 if sys.version_info[0] == 2:
     import Queue as queue
     range = xrange
+    input = raw_input
 elif sys.version_info[0] == 3:
     import queue
 from os.path import isfile, exists
@@ -77,6 +78,7 @@ action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
 names = ['Alice', 'Kraudia']
+human_indices = [] # which players are human
 deck_size = 36
 hand_size = 6
 trump_suit = 2 # hearts (better not change this for consistency)
@@ -84,12 +86,14 @@ trump_suit = 2 # hearts (better not change this for consistency)
 
 def main():
     """Main function for durak."""
-    global psi, chi, epsilon
+    global psi, chi, epsilon, human_indices
     durak_ix = -1
     wins = 0
     training_counter = 0
     completed_episodes = episodes
     for n in range(episodes):
+        if first_human_indices:
+            human_indices = first_human_indices
         if not only_ais:
             psi = min(0.99, max(0, np.random.normal(psi_mu, psi_sigma)))
             chi = max(0, min(0.99, np.random.normal(chi_mu, chi_sigma)))
@@ -191,7 +195,10 @@ def main_loop():
         last_experiences = {ix: None for ix in active_player_indices}
         while not game.attack_ended():
             try:
-                player_ix, action = action_queue.get(timeout=10)
+                if human_indices:
+                    player_ix, action = action_queue.get(timeout=120)
+                else:
+                    player_ix, action = action_queue.get(timeout=10)
             except queue.Empty:
                 clear_threads()
                 return False, training_counter
@@ -353,12 +360,13 @@ def main_loop():
                         game.check_action(), None, None)
             end_turn(first_attacker_ix, last_experiences, hand_means)
         training_counter += 1
-        if verbose:
-            print('Starting to learn from experiences...')
-            train_from_memory()
-            print('Finished learning')
-        else:
-            train_from_memory()
+        if not human_indices:
+            if verbose:
+                print('Starting to learn from experiences...')
+                train_from_memory()
+                print('Finished learning')
+            else:
+                train_from_memory()
     return True, training_counter
 
 
@@ -391,6 +399,8 @@ def clear_threads():
         thread.ended = True
         game.check(thread.player_ix)
         thread.event.set()
+        if thread.player_ix in human_indices:
+            print('Please press enter')
         thread.join()
         game.uncheck(thread.player_ix)
     del threads[:]
@@ -405,6 +415,13 @@ def clear_queue():
         except queue.Empty:
             continue
         action_queue.task_done()
+
+
+def remove_from_human_indices(player_ix):
+    global human_indices
+    update_ix = lambda ix: ix - 1 if player_ix < ix else ix
+    human_indices.remove(player_ix)
+    human_indices = [update_ix(ix) for ix in human_indices]
 
 
 def remove_from_last_experiences(last_experiences, player_ix):
@@ -526,6 +543,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
+            if human_indices:
+                remove_from_human_indices(player_ix)
             if game.remove_player(player_ix):
                 return
         else:
@@ -533,6 +552,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(1 - player_ix):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1 - player_ix)
+                if human_indices:
+                    remove_from_human_indices(1 - player_ix)
                 game.remove_player(1 - player_ix)
                 return
             elif only_ais or player_ix == game.kraudia_ix:
@@ -627,7 +648,14 @@ class ActionReceiver(threading.Thread):
                     and game.field.is_empty()):
                 self.possible_actions = game.get_actions(self.player_ix)
                 self.add_selected_action()
-            self.get_extended_actions()
+            if human_indices and game.defender_ix == self.player_ix:
+                if not self.event.wait(120):
+                    self.possible_actions = []
+                self.event.clear()
+                self.possible_actions = game.get_actions(self.player_ix) \
+                        + [game.check_action(), game.wait_action()]
+            else:
+                self.get_extended_actions()
             # attacker
             if game.defender_ix != self.player_ix:
                 if wait_until_defended:
@@ -646,13 +674,40 @@ class ActionReceiver(threading.Thread):
             else:
                 while not player.checks:
                     self.add_selected_action()
+        elif self.player_ix in human_indices:
+            # first attacker
+            while (self.player_ix == game.prev_neighbour(game.defender_ix)
+                    and game.field.is_empty()):
+                action_string = input()
+                if not action_string:
+                    pass
+                elif action_string[0] == '(' and action_string[-1] == ')':
+                    action = eval(action_string)
+                else:
+                    action = eval('(' + action_string + ')')
+                self.possible_actions = game.get_actions(self.player_ix)
+                if action in self.possible_actions:
+                    self.add_action(action)
+                else:
+                    print('Illegal action! Possible actions:')
+                    print(self.possible_actions)
+            while not self.ended:
+                action_string = input()
+                if not (self.ended or player.checks):
+                    action = self.add_string_action(action_string)
         else:
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
                     and game.field.is_empty()):
                 self.possible_actions = game.get_actions(self.player_ix)
                 self.add_action(choice(self.possible_actions))
-            self.get_actions()
+            if human_indices and game.defender_ix != self.player_ix:
+                if not self.event.wait(120):
+                    self.possible_actions = []
+                self.event.clear()
+                self.possible_actions = game.get_actions(self.player_ix)
+            else:
+                self.get_actions()
             # attacker
             if game.defender_ix != self.player_ix:
                 defender = game.players[game.defender_ix]
@@ -734,6 +789,24 @@ class ActionReceiver(threading.Thread):
             self.add_action(game.wait_action())
         self.get_extended_actions()
 
+    def add_string_action(self, action_string):
+        """Add the action created from the given string to the
+        action queue.
+        """
+        if not action_string:
+            action = game.check_action()
+        elif action_string[0] == '(' and action_string[-1] == ')':
+            action = eval(action_string)
+        else:
+            action = eval('(' + action_string + ')')
+        self.possible_actions = game.get_actions(self.player_ix) \
+                + [game.check_action(), game.wait_action()]
+        if action in self.possible_actions:
+            self.add_action(action)
+        else:
+            print('Illegal action! Possible actions:')
+            print(self.possible_actions)
+
     def add_random_action(self):
         """Add a random action to the action queue or check at random.
         
@@ -801,8 +874,19 @@ def make_card(action):
 
 
 if __name__ == '__main__':
-    if not only_ais and 'Kraudia' not in names:
-        names.append('Kraudia')
+    if not only_ais:
+        try:
+            kraudia_ix = names.index('Kraudia')
+        except ValueError:
+            kraudia_ix = len(names)
+            names.append('Kraudia')
+        if human_indices:
+            assert kraudia_ix not in human_indices, 'Kraudia cannot be a human'
+            verbose = True
+            print('You have two minutes for each input')
+    else:
+        assert not human_indices, 'Humans cannot play against multiple agents'
+    first_human_indices = human_indices[:]
     assert len(names) == len(set(names)), 'Names must be unique'
     assert 0 not in weights, 'Weights cannot be zero'
     assert feature_type != 3, 'Feature type currently not supported'
