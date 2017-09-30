@@ -237,6 +237,8 @@ def main_loop():
                                 last_experiences, player_ix)
                         if only_ais:
                             del hand_means[player_ix]
+                        if human_indices:
+                            remove_from_human_indices(player_ix)
                         if game.remove_player(player_ix):
                             break
                         active_player_indices = spawn_threads()
@@ -287,6 +289,8 @@ def main_loop():
                             last_experiences, player_ix)
                     if only_ais:
                         del hand_means[player_ix]
+                    if human_indices:
+                        remove_from_human_indices(player_ix)
                     if game.remove_player(player_ix):
                         break
                 else:
@@ -333,6 +337,8 @@ def main_loop():
                         last_experiences, player_ix)
                 if only_ais:
                     del hand_means[player_ix]
+                if human_indices:
+                    remove_from_human_indices(player_ix)
                 if game.remove_player(player_ix):
                     break
                 active_player_indices = spawn_threads()
@@ -566,6 +572,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(0):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, 0)
+            if human_indices:
+                remove_from_human_indices(0)
             if game.remove_player(0):
                 return
         else:
@@ -573,6 +581,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(1):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1)
+                if human_indices:
+                    remove_from_human_indices(1)
                 game.remove_player(1)
                 return
             elif only_ais or game.kraudia_ix == 0:
@@ -583,6 +593,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix + 1):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix + 1)
+            if human_indices:
+                remove_from_human_indices(player_ix + 1)
             if game.remove_player(player_ix + 1):
                 return
         else:
@@ -590,6 +602,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(0):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 0)
+                if human_indices:
+                    remove_from_human_indices(0)
                 game.remove_player(0)
                 return
             elif only_ais or player_ix + 1 == game.kraudia_ix:
@@ -606,6 +620,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
+            if human_indices:
+                remove_from_human_indices(player_ix)
             game.remove_player(player_ix)
         else:
             game.draw(player_ix)
@@ -624,9 +640,9 @@ def hand_mean_reward(hand_means, player_ix):
     else:
         avg_before, trump_avg_before, trump_count_before = hand_means
     avg_after, trump_avg_after, trump_count_after = game.hand_means(player_ix)
-    return (avg_after - avg_before) * norm_weights[0] \
-            + (trump_avg_after - trump_avg_before) * norm_weights[1] \
-            + (trump_count_after - trump_count_before) * norm_weights[2]
+    return ((avg_after - avg_before) * norm_weights[0]
+            + (trump_avg_after - trump_avg_before) * norm_weights[1]
+            + (trump_count_after - trump_count_before) * norm_weights[2])
 
 
 class ActionReceiver(threading.Thread):
@@ -652,8 +668,8 @@ class ActionReceiver(threading.Thread):
                 if not self.event.wait(120):
                     self.possible_actions = []
                 self.event.clear()
-                self.possible_actions = game.get_actions(self.player_ix) \
-                        + [game.check_action(), game.wait_action()]
+                self.possible_actions = (game.get_actions(self.player_ix)
+                        + [game.check_action(), game.wait_action()])
             else:
                 self.get_extended_actions()
             # attacker
@@ -734,8 +750,8 @@ class ActionReceiver(threading.Thread):
         if not self.event.wait(1):
             self.possible_actions = []
         self.event.clear()
-        self.possible_actions = game.get_actions(self.player_ix) \
-                + [game.check_action(), game.wait_action()]
+        self.possible_actions = (game.get_actions(self.player_ix)
+                + [game.check_action(), game.wait_action()])
 
     def get_actions(self):
         """Wait until the game is updated and return a list of possible
@@ -801,8 +817,8 @@ class ActionReceiver(threading.Thread):
             action = eval(action_string)
         else:
             action = eval('(' + action_string + ')')
-        self.possible_actions = game.get_actions(self.player_ix) \
-                + [game.check_action(), game.wait_action()]
+        self.possible_actions = (game.get_actions(self.player_ix)
+                + [game.check_action(), game.wait_action()])
         if action in self.possible_actions:
             self.add_action(action)
         else:
@@ -932,10 +948,6 @@ if __name__ == '__main__':
     duration = clock() - start_time
     average_duration = duration
     win_rate = wins * 100
-    # plot_model(actor, to_file='actor-' + str(state_shape) + '-features.png',
-    #         show_shapes=True)
-    # plot_model(critic, to_file='critic-' + str(state_shape)
-    #         + '-features.png', show_shapes=True)
     if completed_episodes > 0:
         average_duration /= float(completed_episodes)
         win_rate /= float(completed_episodes)
@@ -958,8 +970,8 @@ if __name__ == '__main__':
         elif sys.version_info[0] == 3:
             file_name = 'win_stats_'
         if completed_episodes != episodes:
-            file_name += 'interrupted_during_' + str(completed_episodes + 1) \
-                    + '_'
+            file_name += ('interrupted_during_' + str(completed_episodes + 1)
+                    + '_')
         file_int = 0
         while isfile(file_name + str(file_int) + '.npy'):
             file_int += 1
@@ -970,25 +982,39 @@ if __name__ == '__main__':
             print_exc()
             print('')
     if sys.version_info[0] == 2:
-        file_name = prefix + 'actor-' + optimizer + '-' + str(state_shape) \
-                + '-features.h5'
+        file_name = (prefix + 'actor-' + optimizer + '-' + str(state_shape)
+                + '-features.h5')
     elif sys.version_info[0] == 3:
-        file_name = 'actor-' + optimizer + '-' + str(state_shape) \
-                + '-features.h5'
+        file_name = ('actor-' + optimizer + '-' + str(state_shape)
+                + '-features.h5')
     try:
         actor.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
     if sys.version_info[0] == 2:
-        file_name = prefix + 'critic-' + optimizer + '-' + str(state_shape) \
-                + '-features.h5'
+        file_name = (prefix + 'critic-' + optimizer + '-' + str(state_shape)
+                + '-features.h5')
     elif sys.version_info[0] == 3:
-        file_name = 'critic-' + optimizer + '-' + str(state_shape) \
-                + '-features.h5'
+        file_name = ('critic-' + optimizer + '-' + str(state_shape)
+                + '-features.h5')
     try:
         critic.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
+    # if sys.version_info[0] == 2:
+    #     file_name = (prefix + 'actor-' + optimizer + '-' + str(state_shape)
+    #             + '-features.png')
+    # elif sys.version_info[0] == 3:
+    #     file_name = ('actor-' + optimizer + '-' + str(state_shape)
+    #             + '-features.png')
+    # plot_model(actor, to_file=file_name, show_shapes=True)
+    # if sys.version_info[0] == 2:
+    #     file_name = (prefix + 'critic-' + optimizer + '-' + str(state_shape)
+    #             + '-features.png')
+    # elif sys.version_info[0] == 3:
+    #     file_name = ('critic-' + optimizer + '-' + str(state_shape)
+    #             + '-features.png')
+    # plot_model(critic, to_file=file_name, show_shapes=True)
     print('Done')

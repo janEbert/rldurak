@@ -45,9 +45,9 @@ class Actor:
                     self.alpha, epsilon=epsilon).apply_gradients(gradients)
         self.sess.run(tf.global_variables_initializer())
         if load:
-            if self.load_weights():
-                self.model._make_predict_function()
-                self.target_model._make_predict_function()
+            self.load_weights()
+        self.model._make_predict_function()
+        self.target_model._make_predict_function()
 
     def create_model(self):
         """Return a compiled model."""
@@ -71,26 +71,24 @@ class Actor:
         weights = self.model.get_weights()
         target_weights = self.target_model.get_weights()
         for i in range(len(weights)):
-            target_weights[i] = self.tau * weights[i] \
-                    + (1 - self.tau) * target_weights[i]
+            target_weights[i] = (self.tau * weights[i]
+                    + (1 - self.tau) * target_weights[i])
         self.target_model.set_weights(target_weights)
 
     def save_weights(self, file_name=None):
         """Save the current model's weights."""
         if file_name is None:
-            file_name = 'actor-' + self.optimizer_choice + '-' \
-                    + str(self.state_shape) + '-features.h5'
+            file_name = ('actor-' + self.optimizer_choice + '-'
+                    + str(self.state_shape) + '-features.h5')
         self.model.save_weights(file_name)
 
     def load_weights(self, file_name=None):
         """Load the saved weights for the model and target model."""
         if file_name is None:
-            file_name = 'actor-' + self.optimizer_choice + '-' \
-                    + str(self.state_shape) + '-features.h5'
+            file_name = ('actor-' + self.optimizer_choice + '-'
+                    + str(self.state_shape) + '-features.h5')
         try:
             self.model.load_weights(file_name)
             self.target_model.load_weights(file_name)
         except OSError:
             print('Actor weights could not be found. No data was loaded!')
-            return False
-        return True
