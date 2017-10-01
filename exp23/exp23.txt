@@ -56,4 +56,6 @@ hand_size = 6
 test for full classic game
 
 
-
+Finished 5000/5000 episodes after 39593.33 seconds; average: 7.92 seconds per episode
+Kraudia won 2529/5000 games which is a win rate of 50.58 %
+The neural network was trained a total of 193772 times

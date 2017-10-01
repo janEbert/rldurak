@@ -1,6 +1,6 @@
 episodes = 5000
 # whether only AIs are in the game or one AI and random bots
-only_ais = True
+only_ais = False
 load = False # whether to load the models' weights
 verbose = False # whether to print game progress
 feature_type = 1 # 1, 2 or (unsupported) 3
@@ -21,10 +21,10 @@ epsilon_critic = 1e-8
 tau_actor = 0.01
 tau_critic = 0.01
 # number of hidden neurons in each layer
-n1_actor = 100
-n1_critic = 100
-n2_actor = 100
-n2_critic = 100
+n1_actor = 120
+n1_critic = 120
+n2_actor = 60
+n2_critic = 60
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
@@ -34,7 +34,7 @@ wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
 # difference in mean trump value and difference in trump amount
-weights = (1, 2, 2)
+weights = (1, 2, 3)
 # whether the features always contain 52 cards even though less are
 # necessary (so that shape is the same for any amount of cards)
 buffer_features = False
@@ -48,10 +48,10 @@ chi_mu = 0.08
 chi_sigma = 0.1
 # whether the agent waits until all cards are defended before
 # it attacks
-wait_until_defended = False
+wait_until_defended = True
 
 deck_size = 36
 hand_site = 6
 
 
-classic durak only ais
+classic durak different weights and more neurons
