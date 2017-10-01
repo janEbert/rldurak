@@ -658,7 +658,28 @@ class ActionReceiver(threading.Thread):
     def run(self):
         """Add all actions for one round."""
         player = game.players[self.player_ix]
-        if only_ais or self.player_ix == game.kraudia_ix:
+        if self.player_ix in human_indices:
+            # first attacker
+            while (self.player_ix == game.prev_neighbour(game.defender_ix)
+                    and game.field.is_empty()):
+                action_string = input()
+                if not action_string:
+                    pass
+                elif action_string[0] == '(' and action_string[-1] == ')':
+                    action = eval(action_string)
+                else:
+                    action = eval('(' + action_string + ')')
+                self.possible_actions = game.get_actions(self.player_ix)
+                if action in self.possible_actions:
+                    self.add_action(action)
+                else:
+                    print('Illegal action! Possible actions:')
+                    print(self.possible_actions)
+            while not self.ended:
+                action_string = input()
+                if not (self.ended or player.checks):
+                    action = self.add_string_action(action_string)
+        elif only_ais or self.player_ix == game.kraudia_ix:
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
                     and game.field.is_empty()):
@@ -690,27 +711,6 @@ class ActionReceiver(threading.Thread):
             else:
                 while not player.checks:
                     self.add_selected_action()
-        elif self.player_ix in human_indices:
-            # first attacker
-            while (self.player_ix == game.prev_neighbour(game.defender_ix)
-                    and game.field.is_empty()):
-                action_string = input()
-                if not action_string:
-                    pass
-                elif action_string[0] == '(' and action_string[-1] == ')':
-                    action = eval(action_string)
-                else:
-                    action = eval('(' + action_string + ')')
-                self.possible_actions = game.get_actions(self.player_ix)
-                if action in self.possible_actions:
-                    self.add_action(action)
-                else:
-                    print('Illegal action! Possible actions:')
-                    print(self.possible_actions)
-            while not self.ended:
-                action_string = input()
-                if not (self.ended or player.checks):
-                    action = self.add_string_action(action_string)
         else:
             # first attacker
             if (self.player_ix == game.prev_neighbour(game.defender_ix)
@@ -898,12 +898,10 @@ if __name__ == '__main__':
         except ValueError:
             kraudia_ix = len(names)
             names.append('Kraudia')
-        if human_indices:
-            assert kraudia_ix not in human_indices, 'Kraudia cannot be a human'
-            verbose = True
-            print('You have two minutes for each input')
-    else:
-        assert not human_indices, 'Humans cannot play against multiple agents'
+    if human_indices:
+        assert kraudia_ix not in human_indices, 'Kraudia cannot be a human'
+        verbose = True
+        print('You have two minutes for each input')
     first_human_indices = human_indices[:]
     assert len(names) == len(set(names)), 'Names must be unique'
     assert 0 not in weights, 'Weights cannot be zero'
