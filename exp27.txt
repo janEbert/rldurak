@@ -3,7 +3,7 @@ episodes = 5000
 only_ais = False
 load = False # whether to load the models' weights
 verbose = False # whether to print game progress
-feature_type = 1 # 1, 2 or (unsupported) 3
+feature_type = 2 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
 # taken by AIs
 # linearly anneals min_epsilon in the first epsilon_episodes episodes
@@ -34,7 +34,7 @@ wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
 # difference in mean trump value and difference in trump amount
-weights = (1, 2, 3)
+weights = (1, 2, 2)
 # whether the features always contain 52 cards even though less are
 # necessary (so that shape is the same for any amount of cards)
 buffer_features = False
@@ -51,3 +51,5 @@ chi_sigma = 0.1
 
 deck_size = 36
 hand_size = 6
+
+

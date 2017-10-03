@@ -21,10 +21,10 @@ epsilon_critic = 1e-8
 tau_actor = 0.01
 tau_critic = 0.01
 # number of hidden neurons in each layer
-n1_actor = 120
-n1_critic = 120
-n2_actor = 60
-n2_critic = 60
+n1_actor = 100
+n1_critic = 100
+n2_actor = 50
+n2_critic = 50
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
@@ -48,10 +48,11 @@ chi_mu = 0.08
 chi_sigma = 0.1
 # whether the agent waits until all cards are defended before
 # it attacks
-wait_until_defended = True
 
 deck_size = 36
-hand_site = 6
+hand_size = 6
 
 
-classic durak different weights and more neurons
+Finished 5000/5000 episodes after 40826.08 seconds; average: 8.17 seconds per episode
+Kraudia won 2683/5000 games which is a win rate of 53.66 %
+The neural network was trained a total of 194700 times
