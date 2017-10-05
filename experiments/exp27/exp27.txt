@@ -52,4 +52,6 @@ chi_sigma = 0.1
 deck_size = 36
 hand_size = 6
 
-
+Finished 5000/5000 episodes after 14875.56 seconds; average: 2.98 seconds per episode
+Kraudia won 1191/5000 games which is a win rate of 23.82 %
+The neural network was trained a total of 148337 times

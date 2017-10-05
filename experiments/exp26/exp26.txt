@@ -53,5 +53,8 @@ deck_size = 36
 hand_size = 6
 
 
-old reward weights. feature_type 1 against 2
-exp26: bit, exp27: april
+old reward weights. feature_type 1 against 2 (exp27)
+
+Finished 5000/5000 episodes after 42032.06 seconds; average: 8.41 seconds per episode
+Kraudia won 2733/5000 games which is a win rate of 54.66 %
+The neural network was trained a total of 194119 times
