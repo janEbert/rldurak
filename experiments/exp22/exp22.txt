@@ -55,5 +55,4 @@ hand_size = 6
 
 test for full classic game
 
-
-
+53.70 % total win rate
