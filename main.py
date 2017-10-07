@@ -25,9 +25,9 @@ import game.game as game_m
 
 episodes = 5000
 # whether only AIs are in the game or one AI and random bots
-only_ais = False
+only_ais = True
 load = False # whether to load the models' weights
-verbose = False # whether to print game progress
+verbose = True # whether to print game progress
 feature_type = 1 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
 # taken by AIs
@@ -133,6 +133,8 @@ def main():
                     print('Kraudia did not lose!\n')
             elif verbose:
                 print('Kraudia is the durak...\n')
+        else:
+            win_stats[n] = durak_ix
         if epsilon > min_epsilon:
             epsilon -= epsilon_step
         n_plus_one = n + 1
@@ -236,7 +238,8 @@ def main_loop():
                         last_experiences = remove_from_last_experiences(
                                 last_experiences, player_ix)
                         if only_ais:
-                            del hand_means[player_ix]
+                            hand_means = remove_from_hand_means(hand_means,
+                                    player_ix)
                         if human_indices:
                             remove_from_human_indices(player_ix)
                         if game.remove_player(player_ix):
@@ -288,7 +291,8 @@ def main_loop():
                     last_experiences = remove_from_last_experiences(
                             last_experiences, player_ix)
                     if only_ais:
-                        del hand_means[player_ix]
+                        hand_means = remove_from_hand_means(hand_means,
+                                player_ix)
                     if human_indices:
                         remove_from_human_indices(player_ix)
                     if game.remove_player(player_ix):
@@ -336,7 +340,7 @@ def main_loop():
                 last_experiences = remove_from_last_experiences(
                         last_experiences, player_ix)
                 if only_ais:
-                    del hand_means[player_ix]
+                    hand_means = remove_from_hand_means(hand_means, player_ix)
                 if human_indices:
                     remove_from_human_indices(player_ix)
                 if game.remove_player(player_ix):
@@ -423,7 +427,16 @@ def clear_queue():
         action_queue.task_done()
 
 
+def remove_from_hand_means(hand_means, player_ix):
+    """Remove the given player from the dictionary containing hand
+    mean values."""
+    update_ix = lambda ix: ix - 1 if player_ix < ix else ix
+    del hand_means[player_ix]
+    return {update_ix(ix): hand_means[ix] for ix in hand_means}
+
+
 def remove_from_human_indices(player_ix):
+    """Remove the given player from the list of human indices."""
     global human_indices
     update_ix = lambda ix: ix - 1 if player_ix < ix else ix
     human_indices.remove(player_ix)
@@ -549,6 +562,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
+            if only_ais:
+                hand_means = remove_from_hand_means(hand_means, player_ix)
             if human_indices:
                 remove_from_human_indices(player_ix)
             if game.remove_player(player_ix):
@@ -558,6 +573,9 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(1 - player_ix):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1 - player_ix)
+                if only_ais:
+                    hand_means = remove_from_hand_means(hand_means,
+                            1 - player_ix)
                 if human_indices:
                     remove_from_human_indices(1 - player_ix)
                 game.remove_player(1 - player_ix)
@@ -572,6 +590,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(0):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, 0)
+            if only_ais:
+                hand_means = remove_from_hand_means(hand_means, 0)
             if human_indices:
                 remove_from_human_indices(0)
             if game.remove_player(0):
@@ -581,6 +601,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(1):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1)
+                if only_ais:
+                    hand_means = remove_from_hand_means(hand_means, 1)
                 if human_indices:
                     remove_from_human_indices(1)
                 game.remove_player(1)
@@ -593,6 +615,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix + 1):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix + 1)
+            if only_ais:
+                hand_means = remove_from_hand_means(hand_means, player_ix + 1)
             if human_indices:
                 remove_from_human_indices(player_ix + 1)
             if game.remove_player(player_ix + 1):
@@ -602,6 +626,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             if game.will_end() and game.is_winner(0):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 0)
+                if only_ais:
+                    hand_means = remove_from_hand_means(hand_means, 0)
                 if human_indices:
                     remove_from_human_indices(0)
                 game.remove_player(0)
@@ -620,6 +646,8 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
+            if only_ais:
+                hand_means = remove_from_hand_means(hand_means, player_ix)
             if human_indices:
                 remove_from_human_indices(player_ix)
             game.remove_player(player_ix)
@@ -688,9 +716,11 @@ class ActionReceiver(threading.Thread):
             if human_indices and game.defender_ix == self.player_ix:
                 if not self.event.wait(120):
                     self.possible_actions = []
-                self.event.clear()
-                self.possible_actions = (game.get_actions(self.player_ix)
-                        + [game.check_action(), game.wait_action()])
+                    self.event.clear()
+                else:
+                    self.event.clear()
+                    self.possible_actions = (game.get_actions(self.player_ix)
+                            + [game.check_action(), game.wait_action()])
             else:
                 self.get_extended_actions()
             # attacker
@@ -720,8 +750,10 @@ class ActionReceiver(threading.Thread):
             if human_indices and game.defender_ix != self.player_ix:
                 if not self.event.wait(120):
                     self.possible_actions = []
-                self.event.clear()
-                self.possible_actions = game.get_actions(self.player_ix)
+                    self.event.clear()
+                else:
+                    self.event.clear()
+                    self.possible_actions = game.get_actions(self.player_ix)
             else:
                 self.get_actions()
             # attacker
@@ -749,9 +781,11 @@ class ActionReceiver(threading.Thread):
         """
         if not self.event.wait(1):
             self.possible_actions = []
-        self.event.clear()
-        self.possible_actions = (game.get_actions(self.player_ix)
-                + [game.check_action(), game.wait_action()])
+            self.event.clear()
+        else:
+            self.event.clear()
+            self.possible_actions = (game.get_actions(self.player_ix)
+                    + [game.check_action(), game.wait_action()])
 
     def get_actions(self):
         """Wait until the game is updated and return a list of possible
@@ -761,8 +795,10 @@ class ActionReceiver(threading.Thread):
         """
         if not self.event.wait(1):
             self.possible_actions = []
-        self.event.clear()
-        self.possible_actions = game.get_actions(self.player_ix)
+            self.event.clear()
+        else:
+            self.event.clear()
+            self.possible_actions = game.get_actions(self.player_ix)
 
     def add_action(self, action):
         """Add an action with the belonging player's index to the
@@ -930,8 +966,7 @@ if __name__ == '__main__':
     experiences = []
     experience_ix = 0
     model_lock = threading.Lock()
-    if not only_ais:
-        win_stats = np.zeros(episodes, dtype=np.int8)
+    win_stats = np.zeros(episodes, dtype=np.int8)
 
     sess = tf.Session(config=tf.ConfigProto())
     K.set_session(sess)
@@ -962,23 +997,24 @@ if __name__ == '__main__':
         prefix = '/media/data/jebert/'
         if not exists(prefix):
                 prefix = ''
-    if not only_ais:
-        if sys.version_info[0] == 2:
-            file_name = prefix + 'win_stats_'
-        elif sys.version_info[0] == 3:
-            file_name = 'win_stats_'
-        if completed_episodes != episodes:
-            file_name += ('interrupted_during_' + str(completed_episodes + 1)
-                    + '_')
-        file_int = 0
-        while isfile(file_name + str(file_int) + '.npy'):
-            file_int += 1
-        try:
-            np.save(file_name + str(file_int) + '.npy', win_stats,
-                    allow_pickle=False)
-        except IOError:
-            print_exc()
-            print('')
+    if sys.version_info[0] == 2:
+        file_name = prefix + 'win_stats_'
+    elif sys.version_info[0] == 3:
+        file_name = 'win_stats_'
+    if only_ais:
+        file_name += 'only_ais_'
+    if completed_episodes != episodes:
+        file_name += ('interrupted_during_' + str(completed_episodes + 1)
+                + '_')
+    file_int = 0
+    while isfile(file_name + str(file_int) + '.npy'):
+        file_int += 1
+    try:
+        np.save(file_name + str(file_int) + '.npy', win_stats,
+                allow_pickle=False)
+    except IOError:
+        print_exc()
+        print('')
     if sys.version_info[0] == 2:
         file_name = (prefix + 'actor-' + optimizer + '-' + str(state_shape)
                 + '-features.h5')
