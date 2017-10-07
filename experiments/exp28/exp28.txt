@@ -54,4 +54,6 @@ hand_site = 6
 
 reduced gamma
 
-
+Finished 5000/5000 episodes after 49444.39 seconds; average: 9.89 seconds per episode
+Kraudia won 2698/5000 games which is a win rate of 53.96 %
+The neural network was trained a total of 193998 times
