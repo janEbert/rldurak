@@ -238,8 +238,7 @@ def main_loop():
                         last_experiences = remove_from_last_experiences(
                                 last_experiences, player_ix)
                         if only_ais:
-                            hand_means = remove_from_hand_means(hand_means,
-                                    player_ix)
+                            del hand_means[player_ix]
                         if human_indices:
                             remove_from_human_indices(player_ix)
                         if game.remove_player(player_ix):
@@ -291,8 +290,7 @@ def main_loop():
                     last_experiences = remove_from_last_experiences(
                             last_experiences, player_ix)
                     if only_ais:
-                        hand_means = remove_from_hand_means(hand_means,
-                                player_ix)
+                        del hand_means[player_ix]
                     if human_indices:
                         remove_from_human_indices(player_ix)
                     if game.remove_player(player_ix):
@@ -340,7 +338,7 @@ def main_loop():
                 last_experiences = remove_from_last_experiences(
                         last_experiences, player_ix)
                 if only_ais:
-                    hand_means = remove_from_hand_means(hand_means, player_ix)
+                    del hand_means[player_ix]
                 if human_indices:
                     remove_from_human_indices(player_ix)
                 if game.remove_player(player_ix):
@@ -425,14 +423,6 @@ def clear_queue():
         except queue.Empty:
             continue
         action_queue.task_done()
-
-
-def remove_from_hand_means(hand_means, player_ix):
-    """Remove the given player from the dictionary containing hand
-    mean values."""
-    update_ix = lambda ix: ix - 1 if player_ix < ix else ix
-    del hand_means[player_ix]
-    return {update_ix(ix): hand_means[ix] for ix in hand_means}
 
 
 def remove_from_human_indices(player_ix):
@@ -563,7 +553,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
             if only_ais:
-                hand_means = remove_from_hand_means(hand_means, player_ix)
+                del hand_means[player_ix]
             if human_indices:
                 remove_from_human_indices(player_ix)
             if game.remove_player(player_ix):
@@ -574,8 +564,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1 - player_ix)
                 if only_ais:
-                    hand_means = remove_from_hand_means(hand_means,
-                            1 - player_ix)
+                    del hand_means[1 - player_ix]
                 if human_indices:
                     remove_from_human_indices(1 - player_ix)
                 game.remove_player(1 - player_ix)
@@ -591,7 +580,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, 0)
             if only_ais:
-                hand_means = remove_from_hand_means(hand_means, 0)
+                del hand_means[0]
             if human_indices:
                 remove_from_human_indices(0)
             if game.remove_player(0):
@@ -602,7 +591,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1)
                 if only_ais:
-                    hand_means = remove_from_hand_means(hand_means, 1)
+                    del hand_means[1]
                 if human_indices:
                     remove_from_human_indices(1)
                 game.remove_player(1)
@@ -616,7 +605,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix + 1)
             if only_ais:
-                hand_means = remove_from_hand_means(hand_means, player_ix + 1)
+                del hand_means[player_ix + 1]
             if human_indices:
                 remove_from_human_indices(player_ix + 1)
             if game.remove_player(player_ix + 1):
@@ -627,7 +616,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 0)
                 if only_ais:
-                    hand_means = remove_from_hand_means(hand_means, 0)
+                    del hand_means[0]
                 if human_indices:
                     remove_from_human_indices(0)
                 game.remove_player(0)
@@ -647,7 +636,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
             if only_ais:
-                hand_means = remove_from_hand_means(hand_means, player_ix)
+                del hand_means[player_ix]
             if human_indices:
                 remove_from_human_indices(player_ix)
             game.remove_player(player_ix)
