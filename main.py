@@ -25,9 +25,9 @@ import game.game as game_m
 
 episodes = 5000
 # whether only AIs are in the game or one AI and random bots
-only_ais = True
+only_ais = False
 load = False # whether to load the models' weights
-verbose = True # whether to print game progress
+verbose = False # whether to print game progress
 feature_type = 1 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
 # taken by AIs
