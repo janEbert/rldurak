@@ -952,7 +952,10 @@ if __name__ == '__main__':
     threads = None
     action_queue = queue.Queue(len(names) * 6)
     epsilon = epsilon_start
-    epsilon_step = (epsilon_start - min_epsilon) / float(epsilon_episodes)
+    if epsilon_start > min_epsilon:
+        epsilon_step = (epsilon_start - min_epsilon) / float(epsilon_episodes)
+    else:
+        epsilon_step = 0
     experiences = []
     experience_ix = 0
     model_lock = threading.Lock()
@@ -980,8 +983,9 @@ if __name__ == '__main__':
     if not only_ais:
         print('Kraudia won {0}/{1} games which is a win rate of '
                 '{2:.2f} %'.format(wins, completed_episodes, win_rate))
-    print('The neural network was trained a total of {0} times'.format(
-            training_counter))
+    if learn:
+        print('The neural network was trained a total of {0} times'.format(
+                training_counter))
     print('Saving data...')
     if sys.version_info[0] == 2:
         prefix = '/media/data/jebert/'
