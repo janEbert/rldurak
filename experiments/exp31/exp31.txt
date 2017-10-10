@@ -53,3 +53,7 @@ full classic game
 
 
 load exp26 weights, then go back to full random. exp32 does the same but keeps epsilon at 0.1
+
+Finished 5000/5000 episodes after 37525.96 seconds; average: 7.51 seconds per episode
+Kraudia won 2799/5000 games which is a win rate of 55.98 %
+The neural network was trained a total of 192648 times
