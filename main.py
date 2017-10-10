@@ -768,7 +768,7 @@ class ActionReceiver(threading.Thread):
 
         If the wait time is exceeded, return an empty list.
         """
-        if not self.event.wait(1):
+        if not self.event.wait(5):
             self.possible_actions = []
             self.event.clear()
         else:
@@ -782,7 +782,7 @@ class ActionReceiver(threading.Thread):
 
         If the wait time is exceeded, return an empty list.
         """
-        if not self.event.wait(1):
+        if not self.event.wait(5):
             self.possible_actions = []
             self.event.clear()
         else:
