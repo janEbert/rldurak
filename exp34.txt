@@ -1,7 +1,7 @@
 episodes = 5000
 # whether only AIs are in the game or one AI and random bots
 only_ais = True
-load = False # whether to load the models' weights
+load = True # whether to load the models' weights
 verbose = False # whether to print game progress
 feature_type = 1 # 1, 2 or (unsupported) 3
 # epsilon_start is the starting value for how often a random action is
@@ -52,5 +52,4 @@ chi_sigma = 0.1
 full classic game
 
 
-only AIs, two players, no loading
-exp34 loads exp26 results while this is on a raw slate
+only AIs, two players, loads exp26 results in contrary to exp33
