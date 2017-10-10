@@ -8,7 +8,7 @@ import numpy as np
 file_name = 'win_stats'
 
 
-def main(win_stats, count, epsilon_start, min_epsilon, epsilon_episodes):
+def main(win_stats, epsilon_start, min_epsilon, epsilon_episodes, count):
     epsilons = np.linspace(epsilon_start, min_epsilon, epsilon_episodes + 1)
     win_stat_count = win_stats.shape[0]
     epsilon_count = epsilons.shape[0]
@@ -50,4 +50,4 @@ if __name__ == '__main__':
             count = int(sys.argv[5])
         else:
             count = 100
-        main(win_stats, count, epsilon_start, min_epsilon, epsilon_episodes)
+        main(win_stats, epsilon_start, min_epsilon, epsilon_episodes, count)
