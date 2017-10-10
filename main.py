@@ -53,8 +53,8 @@ n2_critic = 50
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
-win_reward = 12
-loss_reward = -12
+win_reward = 36
+loss_reward = -36
 wait_reward = -0.05
 illegal_action_reward = -100 # if >=0, do not reward illegal actions
 # weights for difference in mean hand card value without trumps,
@@ -74,6 +74,7 @@ chi_sigma = 0.1
 # whether the agent waits until all cards are defended before
 # it attacks
 wait_until_defended = True
+learn = True # whether the agent learns
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
@@ -368,7 +369,7 @@ def main_loop():
                         game.check_action(), None, None)
             end_turn(first_attacker_ix, last_experiences, hand_means)
         training_counter += 1
-        if not human_indices:
+        if learn:
             if verbose:
                 print('Starting to learn from experiences...')
                 train_from_memory()
