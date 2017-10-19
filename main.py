@@ -281,9 +281,9 @@ def main_loop():
                     continue
                 game.push([make_card(action)])
                 action_queue.task_done()
+                clear_threads()
                 if game.is_winner(player_ix):
                     reward_winner(player_ix, state, action)
-                    clear_threads()
                     if player_ix < first_attacker_ix:
                         first_attacker_ix -= 1
                     elif first_attacker_ix == game.player_count - 1:
@@ -303,7 +303,6 @@ def main_loop():
                     elif player_ix == game.kraudia_ix:
                         last_experiences[player_ix] = (state, action, 0,
                                 game.features)
-                    clear_threads()
                 active_player_indices = spawn_threads()
                 if active_player_indices[2:]:
                     ix = active_player_indices[2]
