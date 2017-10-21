@@ -1027,9 +1027,10 @@ if __name__ == '__main__':
     prefix = '/media/data/jebert/'
     if not exists(prefix):
             prefix = ''
-    file_name = prefix + 'win_stats_'
     if only_ais:
-        file_name += 'only_ais_'
+        file_name = prefix + 'durak_stats_'
+    else:
+        file_name = prefix + 'win_stats_'
     if completed_episodes != episodes:
         file_name += 'interrupted_during_{0}_'.format(completed_episodes + 1)
     file_int = 0
