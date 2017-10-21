@@ -238,11 +238,7 @@ def main_loop():
                             first_attacker_ix = 0
                         last_experiences = remove_from_last_experiences(
                                 last_experiences, player_ix)
-                        if only_ais:
-                            del hand_means[player_ix]
-                        if player_ix in human_indices:
-                            remove_from_human_indices(player_ix)
-                        if game.remove_player(player_ix):
+                        if remove_player(player_ix):
                             break
                         active_player_indices = spawn_threads()
                     elif only_ais:
@@ -290,11 +286,7 @@ def main_loop():
                         first_attacker_ix = 0
                     last_experiences = remove_from_last_experiences(
                             last_experiences, player_ix)
-                    if only_ais:
-                        del hand_means[player_ix]
-                    if player_ix in human_indices:
-                        remove_from_human_indices(player_ix)
-                    if game.remove_player(player_ix):
+                    if remove_player(player_ix):
                         break
                 else:
                     if only_ais:
@@ -337,11 +329,7 @@ def main_loop():
                     first_attacker_ix = 0
                 last_experiences = remove_from_last_experiences(
                         last_experiences, player_ix)
-                if only_ais:
-                    del hand_means[player_ix]
-                if player_ix in human_indices:
-                    remove_from_human_indices(player_ix)
-                if game.remove_player(player_ix):
+                if remove_player(player_ix):
                     break
                 active_player_indices = spawn_threads()
                 for thread in threads:
@@ -425,6 +413,24 @@ def clear_queue():
         action_queue.task_done()
 
 
+def remove_player(player_ix):
+    """Remove a player from the game and other data structures and
+    return whether the game is over."""
+    if only_ais:
+        del hand_means[player_ix]
+        remove_model(player_ix)
+    if player_ix in human_indices:
+        remove_from_human_indices(player_ix)
+    return game.remove_player(player_ix):
+
+
+def remove_model(player_ix):
+    """Remove the model for the given player from the dictionary by
+    setting its key to a value below zero."""
+    actors[-player_ix] = actors.pop(player_ix)
+    critics[-player_ix] = critics.pop(player_ix)
+
+
 def remove_from_human_indices(player_ix):
     """Remove the given player from the list of human indices."""
     global human_indices
@@ -494,47 +500,98 @@ def reward_winner_from_last_experience(last_experiences, player_ix):
 
 def train(state, action, reward, new_state):
     """Train the networks with the given states, action and reward."""
-    target_q = critic.target_model.predict([new_state,
-            actor.target_model.predict(new_state)])
-    if reward == win_reward or reward == loss_reward:
-        target = reward
+    if only_ais:
+        for ix in actors.keys():
+            if ix >= 0:
+                actor = actors[ix]
+                critic = critics[ix]
+                target_q = critic.target_model.predict([new_state,
+                        actor.target_model.predict(new_state)])
+                if reward == win_reward or reward == loss_reward:
+                    target = reward
+                else:
+                    target = reward + gamma * target_q
+                critic.model.train_on_batch([state, action], target)
+                predicted_action = actor.model.predict(state)
+                gradients = critic.get_gradients(state, predicted_action)
+                actor.train(state, gradients)
+                actor.train_target()
+                critic.train_target()
     else:
-        target = reward + gamma * target_q
-    critic.model.train_on_batch([state, action], target)
-    predicted_action = actor.model.predict(state)
-    gradients = critic.get_gradients(state, predicted_action)
-    actor.train(state, gradients)
-    actor.train_target()
-    critic.train_target()
+        target_q = critic.target_model.predict([new_state,
+                actor.target_model.predict(new_state)])
+        if reward == win_reward or reward == loss_reward:
+            target = reward
+        else:
+            target = reward + gamma * target_q
+        critic.model.train_on_batch([state, action], target)
+        predicted_action = actor.model.predict(state)
+        gradients = critic.get_gradients(state, predicted_action)
+        actor.train(state, gradients)
+        actor.train_target()
+        critic.train_target()
 
 
 def train_from_memory():
     """Train the networks with data from memory."""
-    if len(experiences) >= batch_size:
-        batch = sample(experiences, batch_size)
+    if only_ais:
+        for ix in actors.keys():
+            if ix >= 0:
+                if len(experiences) >= batch_size:
+                    batch = sample(experiences, batch_size)
+                else:
+                    batch = sample(experiences, len(experiences))
+                states = np.asarray([experience[0] for experience in batch],
+                        dtype=np.int8)
+                actions = np.asarray([experience[1] for experience in batch],
+                        dtype=np.int8)
+                rewards = np.asarray([experience[2] for experience in batch])
+                new_states = np.asarray([experience[3]
+                        for experience in batch], dtype=np.int8)
+                actor = actors[ix]
+                critic = critics[ix]
+                target_qs = critic.target_model.predict([new_states,
+                        actor.target_model.predict(new_states,
+                        batch_size=len(batch))], batch_size=len(batch))
+                targets = actions.copy()
+                for i in range(len(batch)):
+                    if rewards[i] != win_reward and rewards[i] != loss_reward:
+                        targets[i] = rewards[i]
+                    else:
+                        targets[i] = rewards[i] + gamma * target_qs[i]
+                critic.model.train_on_batch([states, actions], targets)
+                predicted_actions = actor.model.predict(states)
+                gradients = critic.get_gradients(states, predicted_actions)
+                actor.train(states, gradients)
+                actor.train_target()
+                critic.train_target()
     else:
-        batch = sample(experiences, len(experiences))
-    states = np.asarray([experience[0] for experience in batch], dtype=np.int8)
-    actions = np.asarray([experience[1] for experience in batch],
-            dtype=np.int8)
-    rewards = np.asarray([experience[2] for experience in batch])
-    new_states = np.asarray([experience[3] for experience in batch],
-            dtype=np.int8)
-    target_qs = critic.target_model.predict([new_states,
-            actor.target_model.predict(new_states, batch_size=len(batch))],
-            batch_size=len(batch))
-    targets = actions.copy()
-    for i in range(len(batch)):
-        if rewards[i] != win_reward and rewards[i] != loss_reward:
-            targets[i] = rewards[i]
+        if len(experiences) >= batch_size:
+            batch = sample(experiences, batch_size)
         else:
-            targets[i] = rewards[i] + gamma * target_qs[i]
-    critic.model.train_on_batch([states, actions], targets)
-    predicted_actions = actor.model.predict(states)
-    gradients = critic.get_gradients(states, predicted_actions)
-    actor.train(states, gradients)
-    actor.train_target()
-    critic.train_target()
+            batch = sample(experiences, len(experiences))
+        states = np.asarray([experience[0] for experience in batch],
+                dtype=np.int8)
+        actions = np.asarray([experience[1] for experience in batch],
+                dtype=np.int8)
+        rewards = np.asarray([experience[2] for experience in batch])
+        new_states = np.asarray([experience[3] for experience in batch],
+                dtype=np.int8)
+        target_qs = critic.target_model.predict([new_states,
+                actor.target_model.predict(new_states, batch_size=len(batch))],
+                batch_size=len(batch))
+        targets = actions.copy()
+        for i in range(len(batch)):
+            if rewards[i] != win_reward and rewards[i] != loss_reward:
+                targets[i] = rewards[i]
+            else:
+                targets[i] = rewards[i] + gamma * target_qs[i]
+        critic.model.train_on_batch([states, actions], targets)
+        predicted_actions = actor.model.predict(states)
+        gradients = critic.get_gradients(states, predicted_actions)
+        actor.train(states, gradients)
+        actor.train_target()
+        critic.train_target()
 
 
 def end_turn(first_attacker_ix, last_experiences, hand_means):
@@ -552,22 +609,14 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
-            if only_ais:
-                del hand_means[player_ix]
-            if player_ix in human_indices:
-                remove_from_human_indices(player_ix)
-            if game.remove_player(player_ix):
+            if remove_player(player_ix):
                 return
         else:
             game.draw(player_ix)
             if game.will_end() and game.is_winner(1 - player_ix):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1 - player_ix)
-                if only_ais:
-                    del hand_means[1 - player_ix]
-                if 1 - player_ix in human_indices:
-                    remove_from_human_indices(1 - player_ix)
-                game.remove_player(1 - player_ix)
+                remove_player(1 - player_ix)
                 return
             elif only_ais or player_ix == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
@@ -579,22 +628,14 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(0):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, 0)
-            if only_ais:
-                del hand_means[0]
-            if 0 in human_indices:
-                remove_from_human_indices(0)
-            if game.remove_player(0):
+            if remove_player(0):
                 return
         else:
             game.draw(0)
             if game.will_end() and game.is_winner(1):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1)
-                if only_ais:
-                    del hand_means[1]
-                if 1 in human_indices:
-                    remove_from_human_indices(1)
-                game.remove_player(1)
+                remove_player(1)
                 return
             elif only_ais or game.kraudia_ix == 0:
                 last_experiences = update_last_experience(last_experiences, 0,
@@ -604,22 +645,14 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix + 1):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix + 1)
-            if only_ais:
-                del hand_means[player_ix + 1]
-            if player_ix + 1 in human_indices:
-                remove_from_human_indices(player_ix + 1)
-            if game.remove_player(player_ix + 1):
+            if remove_player(player_ix + 1):
                 return
         else:
             game.draw(player_ix + 1)
             if game.will_end() and game.is_winner(0):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 0)
-                if only_ais:
-                    del hand_means[0]
-                if 0 in human_indices:
-                    remove_from_human_indices(0)
-                game.remove_player(0)
+                remove_player(0)
                 return
             elif only_ais or player_ix + 1 == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
@@ -635,11 +668,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
-            if only_ais:
-                del hand_means[player_ix]
-            if player_ix in human_indices:
-                remove_from_human_indices(player_ix)
-            game.remove_player(player_ix)
+            remove_player(player_ix)
         else:
             game.draw(player_ix)
             if only_ais or player_ix == game.kraudia_ix:
@@ -808,10 +837,12 @@ class ActionReceiver(threading.Thread):
             else:
                 state = game.features.copy()
             game.feature_lock.release()
-            model_lock.acquire()
-            action = [int(v) for v in actor.model.predict(
-                    state.reshape(1, state.shape[0]))[0]]
-            model_lock.release()
+            if only_ais:
+                action = [int(v) for v in actors[self.player_ix].model.predict(
+                        state.reshape(1, state.shape[0]))[0]]
+            else:
+                action = [int(v) for v in actor.model.predict(
+                        state.reshape(1, state.shape[0]))[0]]
             # TODO maybe remove?
             if action[0] in [0, 2, 3, 4]:
                 action[3] = -1
@@ -957,16 +988,23 @@ if __name__ == '__main__':
         epsilon_step = 0
     experiences = []
     experience_ix = 0
-    model_lock = threading.Lock()
     win_stats = np.zeros(episodes, dtype=np.int8)
 
     sess = tf.Session(config=tf.ConfigProto())
     K.set_session(sess)
     actor = actor_m.Actor(sess, state_shape, action_shape, load, optimizer,
             alpha_actor, epsilon_actor, tau_actor, n1_actor, n2_actor)
-    critic = critic_m.Critic(sess, state_shape, action_shape, load, optimizer,
-            alpha_critic, epsilon_critic, tau_critic, n1_critic, n2_critic)
-
+    critic = critic_m.Critic(sess, state_shape, action_shape, load,
+            optimizer, alpha_critic, epsilon_critic, tau_critic, n1_critic,
+            n2_critic)
+    if only_ais:
+        actors = {}
+        critics = {}
+        for ix in range(1, len(names) + 1):
+            if ix not in human_indices:
+                actors[ix] = actor.copy()
+                critics[ix] = critic.copy()
+        del actor, critic
     print('\nStarting to play\n')
     start_time = clock()
     wins, completed_episodes, training_counter = main()
@@ -986,47 +1024,46 @@ if __name__ == '__main__':
         print('The neural network was trained a total of {0} times'.format(
                 training_counter))
     print('Saving data...')
-    if sys.version_info[0] == 2:
-        prefix = '/media/data/jebert/'
-        if not exists(prefix):
-                prefix = ''
-    if sys.version_info[0] == 2:
-        file_name = prefix + 'win_stats_'
-    elif sys.version_info[0] == 3:
-        file_name = 'win_stats_'
+    prefix = '/media/data/jebert/'
+    if not exists(prefix):
+            prefix = ''
+    file_name = prefix + 'win_stats_'
     if only_ais:
         file_name += 'only_ais_'
     if completed_episodes != episodes:
-        file_name += ('interrupted_during_' + str(completed_episodes + 1)
-                + '_')
+        file_name += 'interrupted_during_{0}_'.format(completed_episodes + 1)
     file_int = 0
-    while isfile(file_name + str(file_int) + '.npy'):
+    while isfile('{0}{1}.npy'.format(file_name, file_int)):
         file_int += 1
     try:
-        np.save(file_name + str(file_int) + '.npy', win_stats,
+        np.save('{0}{1}.npy'.format(file_name, file_int), win_stats,
                 allow_pickle=False)
     except IOError:
         print_exc()
         print('')
-    if sys.version_info[0] == 2:
-        file_name = (prefix + 'actor-' + optimizer + '-' + str(state_shape)
-                + '-features.h5')
-    elif sys.version_info[0] == 3:
-        file_name = ('actor-' + optimizer + '-' + str(state_shape)
-                + '-features.h5')
+    file_name = '{0}actor-{1}-{2}-features.h5'.format(prefix, optimizer,
+            state_shape)
     try:
-        actor.save_weights(file_name)
+        if only_ais:
+            file_name = file_name[:-3]
+            for ix in actors.keys():
+                actors[ix].save_weights('{0}-player-{1}.h5'.format(file_name,
+                        abs(ix) - 1))
+        else:
+            actor.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
-    if sys.version_info[0] == 2:
-        file_name = (prefix + 'critic-' + optimizer + '-' + str(state_shape)
-                + '-features.h5')
-    elif sys.version_info[0] == 3:
-        file_name = ('critic-' + optimizer + '-' + str(state_shape)
-                + '-features.h5')
+    file_name = '{0}critic-{1}-{2}-features.h5'.format(prefix, optimizer,
+            state_shape)
     try:
-        critic.save_weights(file_name)
+        if only_ais:
+            file_name = file_name[:-3]
+            for ix in critics.keys():
+                critics[ix].save_weights('{0}-player-{1}.h5'.format(file_name,
+                        abs(ix) - 1))
+        else:
+            critic.save_weights(file_name)
     except IOError:
         print_exc()
         print('')
