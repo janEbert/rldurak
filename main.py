@@ -421,7 +421,7 @@ def remove_player(player_ix):
         remove_model(player_ix)
     if player_ix in human_indices:
         remove_from_human_indices(player_ix)
-    return game.remove_player(player_ix):
+    return game.remove_player(player_ix)
 
 
 def remove_model(player_ix):
@@ -503,20 +503,20 @@ def train(state, action, reward, new_state):
     if only_ais:
         for ix in actors.keys():
             if ix >= 0:
-                actor = actors[ix]
-                critic = critics[ix]
-                target_q = critic.target_model.predict([new_state,
-                        actor.target_model.predict(new_state)])
+                actor_ = actors[ix]
+                critic_ = critics[ix]
+                target_q = critic_.target_model.predict([new_state,
+                        actor_.target_model.predict(new_state)])
                 if reward == win_reward or reward == loss_reward:
                     target = reward
                 else:
                     target = reward + gamma * target_q
-                critic.model.train_on_batch([state, action], target)
-                predicted_action = actor.model.predict(state)
-                gradients = critic.get_gradients(state, predicted_action)
-                actor.train(state, gradients)
-                actor.train_target()
-                critic.train_target()
+                critic_.model.train_on_batch([state, action], target)
+                predicted_action = actor_.model.predict(state)
+                gradients = critic_.get_gradients(state, predicted_action)
+                actor_.train(state, gradients)
+                actor_.train_target()
+                critic_.train_target()
     else:
         target_q = critic.target_model.predict([new_state,
                 actor.target_model.predict(new_state)])
@@ -548,10 +548,10 @@ def train_from_memory():
                 rewards = np.asarray([experience[2] for experience in batch])
                 new_states = np.asarray([experience[3]
                         for experience in batch], dtype=np.int8)
-                actor = actors[ix]
-                critic = critics[ix]
-                target_qs = critic.target_model.predict([new_states,
-                        actor.target_model.predict(new_states,
+                actor_ = actors[ix]
+                critic_ = critics[ix]
+                target_qs = critic_.target_model.predict([new_states,
+                        actor_.target_model.predict(new_states,
                         batch_size=len(batch))], batch_size=len(batch))
                 targets = actions.copy()
                 for i in range(len(batch)):
@@ -559,12 +559,12 @@ def train_from_memory():
                         targets[i] = rewards[i]
                     else:
                         targets[i] = rewards[i] + gamma * target_qs[i]
-                critic.model.train_on_batch([states, actions], targets)
-                predicted_actions = actor.model.predict(states)
-                gradients = critic.get_gradients(states, predicted_actions)
-                actor.train(states, gradients)
-                actor.train_target()
-                critic.train_target()
+                critic_.model.train_on_batch([states, actions], targets)
+                predicted_actions = actor_.model.predict(states)
+                gradients = critic_.get_gradients(states, predicted_actions)
+                actor_.train(states, gradients)
+                actor_.train_target()
+                critic_.train_target()
     else:
         if len(experiences) >= batch_size:
             batch = sample(experiences, batch_size)
