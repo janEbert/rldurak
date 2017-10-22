@@ -999,22 +999,25 @@ if __name__ == '__main__':
     experiences = []
     experience_ix = 0
     win_stats = np.zeros(episodes, dtype=np.int8)
-
-    sess = tf.Session(config=tf.ConfigProto())
-    K.set_session(sess)
-    actor = actor_m.Actor(sess, state_shape, action_shape, load, optimizer,
-            alpha_actor, epsilon_actor, tau_actor, n1_actor, n2_actor)
-    critic = critic_m.Critic(sess, state_shape, action_shape, load,
-            optimizer, alpha_critic, epsilon_critic, tau_critic, n1_critic,
-            n2_critic)
     if only_ais:
         actors = {}
         critics = {}
         for ix in range(len(names)):
             if ix not in human_indices:
-                actors[ix] = actor.copy()
-                critics[ix] = (ix, critic.copy())
-        del actor, critic
+                actors[ix] = actor_m.Actor(sess, state_shape, action_shape,
+                        load, optimizer, alpha_actor, epsilon_actor, tau_actor,
+                        n1_actor, n2_actor)
+                critics[ix] = (ix, critic_m.Critic(sess, state_shape,
+                        action_shape, load, optimizer, alpha_critic,
+                        epsilon_critic, tau_critic, n1_critic, n2_critic))
+    else:
+        actor = actor_m.Actor(sess, state_shape, action_shape, load, optimizer,
+                alpha_actor, epsilon_actor, tau_actor, n1_actor, n2_actor)
+        critic = critic_m.Critic(sess, state_shape, action_shape, load,
+                optimizer, alpha_critic, epsilon_critic, tau_critic, n1_critic,
+                n2_critic)
+    sess = tf.Session(config=tf.ConfigProto())
+    K.set_session(sess)
     print('\nStarting to play\n')
     start_time = clock()
     wins, completed_episodes, training_counter = main()
