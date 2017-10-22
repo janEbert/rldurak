@@ -238,7 +238,9 @@ def main_loop():
                             first_attacker_ix = 0
                         last_experiences = remove_from_last_experiences(
                                 last_experiences, player_ix)
-                        if remove_player(player_ix):
+                        hand_means, ended = remove_player(player_ix,
+                                hand_means)
+                        if ended:
                             break
                         active_player_indices = spawn_threads()
                     elif only_ais:
@@ -286,7 +288,8 @@ def main_loop():
                         first_attacker_ix = 0
                     last_experiences = remove_from_last_experiences(
                             last_experiences, player_ix)
-                    if remove_player(player_ix):
+                    hand_means, ended = remove_player(player_ix, hand_means)
+                    if ended:
                         break
                 else:
                     if only_ais:
@@ -329,7 +332,8 @@ def main_loop():
                     first_attacker_ix = 0
                 last_experiences = remove_from_last_experiences(
                         last_experiences, player_ix)
-                if remove_player(player_ix):
+                hand_means, ended = remove_player(player_ix, hand_means)
+                if ended:
                     break
                 active_player_indices = spawn_threads()
                 for thread in threads:
@@ -413,7 +417,7 @@ def clear_queue():
         action_queue.task_done()
 
 
-def remove_player(player_ix):
+def remove_player(player_ix, hand_means):
     """Remove a player from the game and other data structures and
     return whether the game is over.
     """
@@ -422,7 +426,7 @@ def remove_player(player_ix):
         remove_model(player_ix)
     if player_ix in human_indices:
         remove_from_human_indices(player_ix)
-    return game.remove_player(player_ix)
+    return hand_means, game.remove_player(player_ix)
 
 
 def remove_model(player_ix):
@@ -609,14 +613,15 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
-            if remove_player(player_ix):
+            hand_means, ended = remove_player(player_ix, hand_means)
+            if ended:
                 return
         else:
             game.draw(player_ix)
             if game.will_end() and game.is_winner(1 - player_ix):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1 - player_ix)
-                remove_player(1 - player_ix)
+                remove_player(1 - player_ix, hand_means)
                 return
             elif only_ais or player_ix == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
@@ -628,14 +633,15 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(0):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, 0)
-            if remove_player(0):
+            hand_means, ended = remove_player(0, hand_means)
+            if ended:
                 return
         else:
             game.draw(0)
             if game.will_end() and game.is_winner(1):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 1)
-                remove_player(1)
+                remove_player(1, hand_means)
                 return
             elif only_ais or game.kraudia_ix == 0:
                 last_experiences = update_last_experience(last_experiences, 0,
@@ -645,14 +651,15 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix + 1):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix + 1)
-            if remove_player(player_ix + 1):
+            hand_means, ended = remove_player(player_ix + 1, hand_means)
+            if ended:
                 return
         else:
             game.draw(player_ix + 1)
             if game.will_end() and game.is_winner(0):
                 last_experiences = reward_winner_from_last_experience(
                         last_experiences, 0)
-                remove_player(0)
+                remove_player(0, hand_means)
                 return
             elif only_ais or player_ix + 1 == game.kraudia_ix:
                 last_experiences = update_last_experience(last_experiences,
@@ -668,7 +675,7 @@ def end_turn(first_attacker_ix, last_experiences, hand_means):
         if game.is_winner(player_ix):
             last_experiences = reward_winner_from_last_experience(
                     last_experiences, player_ix)
-            remove_player(player_ix)
+            remove_player(player_ix, hand_means)
         else:
             game.draw(player_ix)
             if only_ais or player_ix == game.kraudia_ix:
