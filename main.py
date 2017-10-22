@@ -999,6 +999,8 @@ if __name__ == '__main__':
     experiences = []
     experience_ix = 0
     win_stats = np.zeros(episodes, dtype=np.int8)
+    sess = tf.Session(config=tf.ConfigProto())
+    K.set_session(sess)
     if only_ais:
         actors = {}
         critics = {}
@@ -1016,8 +1018,6 @@ if __name__ == '__main__':
         critic = critic_m.Critic(sess, state_shape, action_shape, load,
                 optimizer, alpha_critic, epsilon_critic, tau_critic, n1_critic,
                 n2_critic)
-    sess = tf.Session(config=tf.ConfigProto())
-    K.set_session(sess)
     print('\nStarting to play\n')
     start_time = clock()
     wins, completed_episodes, training_counter = main()
