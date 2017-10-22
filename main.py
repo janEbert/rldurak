@@ -415,7 +415,8 @@ def clear_queue():
 
 def remove_player(player_ix):
     """Remove a player from the game and other data structures and
-    return whether the game is over."""
+    return whether the game is over.
+    """
     if only_ais:
         del hand_means[player_ix]
         remove_model(player_ix)
@@ -426,9 +427,18 @@ def remove_player(player_ix):
 
 def remove_model(player_ix):
     """Remove the model for the given player from the dictionary by
-    setting its key to a value below zero."""
-    actors[-player_ix] = actors.pop(player_ix)
-    critics[-player_ix] = critics.pop(player_ix)
+    setting its key to a value below zero and update the
+    remaining indices.
+    """
+    ix_critic = critics.pop(player_ix)
+    actor = actors.pop(player_ix)
+    new_ix = -(ix_critic[0] + 1)
+    for ix in actors.keys():
+        if ix > player_ix:
+            actors[ix - 1] = actors[ix].pop()
+            critics[ix - 1] = critics[ix].pop()
+    actors[new_ix] = actor
+    critics[new_ix] = ix_critic
 
 
 def remove_from_human_indices(player_ix):
@@ -1000,10 +1010,10 @@ if __name__ == '__main__':
     if only_ais:
         actors = {}
         critics = {}
-        for ix in range(1, len(names) + 1):
+        for ix in range(len(names)):
             if ix not in human_indices:
                 actors[ix] = actor.copy()
-                critics[ix] = critic.copy()
+                critics[ix] = (ix, critic.copy())
         del actor, critic
     print('\nStarting to play\n')
     start_time = clock()
@@ -1049,7 +1059,7 @@ if __name__ == '__main__':
             file_name = file_name[:-3]
             for ix in actors.keys():
                 actors[ix].save_weights('{0}-player-{1}.h5'.format(file_name,
-                        abs(ix) - 1))
+                        critics[ix][0]))
         else:
             actor.save_weights(file_name)
     except IOError:
@@ -1060,9 +1070,8 @@ if __name__ == '__main__':
     try:
         if only_ais:
             file_name = file_name[:-3]
-            for ix in critics.keys():
-                critics[ix].save_weights('{0}-player-{1}.h5'.format(file_name,
-                        abs(ix) - 1))
+            for (ix, critic_) in critics:
+                critic_.save_weights('{0}-player-{1}.h5'.format(file_name, ix))
         else:
             critic.save_weights(file_name)
     except IOError:
