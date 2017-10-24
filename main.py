@@ -46,10 +46,8 @@ epsilon_critic = 1e-8
 tau_actor = 0.01
 tau_critic = 0.01
 # number of hidden neurons in each layer
-n1_actor = 100
-n1_critic = 100
-n2_actor = 50
-n2_critic = 50
+neurons_per_layer_actor = [100, 50, 25]
+neurons_per_layer_critic = [100, 50, 25]
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
@@ -1004,18 +1002,18 @@ if __name__ == '__main__':
                 sess = tf.Session(config=tf.ConfigProto())
                 actors.append(actor_m.Actor(sess, state_shape, action_shape,
                         load, optimizer, alpha_actor, epsilon_actor, tau_actor,
-                        n1_actor, n2_actor))
+                        neurons_per_layer_actor))
                 critics.append((ix, critic_m.Critic(sess, state_shape,
                         action_shape, load, optimizer, alpha_critic,
-                        epsilon_critic, tau_critic, n1_critic, n2_critic)))
+                        epsilon_critic, tau_critic, neurons_per_layer_critic)))
     else:
         sess = tf.Session(config=tf.ConfigProto())
         # K.set_session(sess)
         actor = actor_m.Actor(sess, state_shape, action_shape, load, optimizer,
-                alpha_actor, epsilon_actor, tau_actor, n1_actor, n2_actor)
+                alpha_actor, epsilon_actor, tau_actor, neurons_per_layer_actor)
         critic = critic_m.Critic(sess, state_shape, action_shape, load,
-                optimizer, alpha_critic, epsilon_critic, tau_critic, n1_critic,
-                n2_critic)
+                optimizer, alpha_critic, epsilon_critic, tau_critic,
+                neurons_per_layer_critic)
     print('\nStarting to play\n')
     start_time = clock()
     wins, completed_episodes, training_counter = main()

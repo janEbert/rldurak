@@ -14,7 +14,7 @@ class Actor:
 
     def __init__(
             self, sess, state_shape, action_shape, load=True, optimizer='adam',
-            alpha=0.001, epsilon=1e-8, tau=0.001, n1=100, n2=150):
+            alpha=0.001, epsilon=1e-8, tau=0.001, *neurons_per_layer):
         """Construct an actor with the given session, learning rate,
         update factor and neurons in the hidden layers.
 
@@ -26,8 +26,10 @@ class Actor:
         self.optimizer_choice = optimizer.lower()
         self.alpha = alpha
         self.tau = tau
-        self.n1 = n1
-        self.n2 = n2
+        if not neurons_per_layer:
+            self.neurons_per_layer = [100]
+        else:
+            self.neurons_per_layer = neurons_per_layer
         K.set_session(sess)
         self.model, self.inputs, weights = self.create_model()
         self.target_model = self.create_model()[0]
@@ -52,8 +54,9 @@ class Actor:
     def create_model(self):
         """Return a compiled model."""
         inputs = Input(shape=(self.state_shape,))
-        x = Dense(self.n1, activation='relu')(inputs)
-        x = Dense(self.n2, activation='relu')(x)
+        x = Dense(self.neurons_per_layer[0], activation='relu')(inputs)
+        for n in self.neurons_per_layer[1:]:
+            x = Dense(n, activation='relu')(x)
         outputs = Dense(self.action_shape)(x)
 
         model = Model(inputs=inputs, outputs=outputs)

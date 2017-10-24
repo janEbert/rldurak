@@ -16,7 +16,7 @@ class Critic:
 
     def __init__(
             self, sess, state_shape, action_shape, load=True, optimizer='adam',
-            alpha=0.001, epsilon=1e-8, tau=0.001, n1=100, n2=150):
+            alpha=0.001, epsilon=1e-8, tau=0.001, neurons_per_layer):
         """Initialize a critic with the given session, learning rate,
         update factor and neurons in the hidden layers.
 
@@ -28,8 +28,13 @@ class Critic:
         self.optimizer_choice = optimizer.lower()
         self.alpha = alpha
         self.tau = tau
-        self.n1 = n1
-        self.n2 = n2
+        if len(neurons_per_layer) < 2:
+            if not neurons_per_layer:
+                self.neurons_per_layer = [100, 50]
+            else:
+                self.neurons_per_layer.append(50)
+        else:
+            self.neurons_per_layer = neurons_per_layer
         K.set_session(sess)
         self.model, self.state_input, self.action_input = self.create_model(
                 epsilon)
@@ -48,10 +53,12 @@ class Critic:
         """
         inputs = Input(shape=(self.state_shape,))
         action_input = Input(shape=(self.action_shape,))
-        x1 = Dense(self.n1, activation='relu')(inputs)
-        x1 = Dense(self.n2, activation='relu')(x1)
-        x2 = Dense(self.n2, activation='relu')(action_input)
+        x1 = Dense(self.neurons_per_layer[0], activation='relu')(inputs)
+        x1 = Dense(self.neurons_per_layer[1], activation='relu')(x1)
+        x2 = Dense(self.neurons_per_layer[1], activation='relu')(action_input)
         x = add([x1, x2])
+        for n in self.neurons_per_layer[2:]:
+            x = Dense(n, activation='relu')(x)
         outputs = Dense(self.action_shape)(x)
 
         model = Model(inputs=[inputs, action_input], outputs=outputs)
