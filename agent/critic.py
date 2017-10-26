@@ -16,7 +16,7 @@ class Critic:
 
     def __init__(
             self, sess, state_shape, action_shape, load=True, optimizer='adam',
-            alpha=0.001, epsilon=1e-8, tau=0.001, neurons_per_layer):
+            alpha=0.001, epsilon=1e-8, tau=0.001, neurons_per_layer=[100, 50]):
         """Initialize a critic with the given session, learning rate,
         update factor and neurons in the hidden layers.
 
@@ -33,6 +33,7 @@ class Critic:
                 self.neurons_per_layer = [100, 50]
             else:
                 self.neurons_per_layer.append(50)
+            print('Neurons per layer for the critic have been adjusted')
         else:
             self.neurons_per_layer = neurons_per_layer
         K.set_session(sess)

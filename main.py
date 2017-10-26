@@ -46,8 +46,8 @@ epsilon_critic = 1e-8
 tau_actor = 0.01
 tau_critic = 0.01
 # number of hidden neurons in each layer
-neurons_per_layer_actor = [100, 50, 25]
-neurons_per_layer_critic = [100, 50, 25]
+neurons_per_layer_actor = [100, 50]
+neurons_per_layer_critic = [100, 50]
 gamma = 0.99 # discount factor
 max_experience_count = 500 # amount of experiences to store
 batch_size = 32 # amount of experiences to replay
