@@ -268,8 +268,11 @@ class Game:
                 'Card is too low'
         if to_defend.num_suit == self.deck.num_trump_suit:
             assert is_greater, 'Card is too low'
-        defender.defend(to_defend, card)
-        self.field.defend(to_defend, card)
+        try:
+            defender.defend(to_defend, card)
+            self.field.defend(to_defend, card)
+        except ValueError:
+            return False
         # update features
         if self.only_ais:
             if self.feature_type == 1:
@@ -297,6 +300,7 @@ class Game:
                         or self.defender_ix == self.prev_neighbour()):
                     if card.num_suit != self.deck.num_trump_suit:
                         self.sub_neighbour_card(card)
+        return True
 
     def push(self, cards):
         """Push the cards to the next player."""

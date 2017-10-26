@@ -255,6 +255,8 @@ def main_loop():
                         action_queue.task_done()
                         threads[active_player_indices.index(
                                 player_ix)].event.set()
+                        store_experience((state, action, illegal_action_reward,
+                                state))
                         continue
                     game.attack(player_ix, [make_card(action)])
                     for ix in active_player_indices[0::2]:
@@ -264,16 +266,24 @@ def main_loop():
                                     ix)].event.set()
             elif action[0] == 1:
                 to_defend, card = make_card(action)
-                game.defend(to_defend, card)
-                for ix in active_player_indices[0::2]:
-                    if game.players[ix].checks:
-                        game.uncheck(ix)
-                        threads[active_player_indices.index(ix)].event.set()
+                if game.defend(to_defend, card):
+                    for ix in active_player_indices[0::2]:
+                        if game.players[ix].checks:
+                            game.uncheck(ix)
+                            threads[active_player_indices.index(
+                                    ix)].event.set()
+                else:
+                    action_queue.task_done()
+                    threads[active_player_indices.index(player_ix)].event.set()
+                    store_experience((state, action, illegal_action_reward,
+                            state))
+                    continue
             elif action[0] == 2:
                 if game.exceeds_field([None]):
                     action_queue.task_done()
-                    threads[active_player_indices.index(
-                            player_ix)].event.set()
+                    threads[active_player_indices.index(player_ix)].event.set()
+                    store_experience((state, action, illegal_action_reward,
+                            state))
                     continue
                 game.push([make_card(action)])
                 action_queue.task_done()
