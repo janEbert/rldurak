@@ -211,8 +211,8 @@ This value is also normalized to be between~$-1$ and~1 (by normalizing the input
 To have some sophisticated behaviour, the random bots wait until all current attacks are defended or the defender checks until they place another one. This is usually the best strategy unless a player wants to get rid of their cards before the maximum amount of cards is placed. This is also implemented for agents but can be toggled to give the agent more freedom in decision making. Assuming the bots' behaviour is not the optimal strategy~-- which is highly likely~-- the agent should achieve better results than the random~bots.
 
 Excluding the amount of parameters for the game itself, over~30 different parameters can be tuned that each affect the agent's learning.
-Because the number of parameters is this large, tuning them all is simply not possible in the scope of this thesis. I have relied on the parameters in the DDPG paper~\cite[p.~11]{ddpg} and try fitting them to the problem at hand during the different experiments.
-As the optimizer for the neural networks, I have mostly used Adam~\cite{adam}. This decision was also influenced by the DDPG paper. However, RMSProp~\cite{rmsprop} can also be used and was also tested in the experiments.
+Because the number of parameters is this large, tuning them all is simply not possible in the scope of this thesis. I have relied on the parameters in the DDPG paper~\cite[p.~11]{ddpg} and try fitting them to the problem at hand during the different experiments. This is why I also do not deviate from the critic setup presented in the paper: The critic receives the actor's input in the second hidden layer. To this layer, another second hidden layer with the same amount of neurons is added.
+As the optimizer for the neural networks, I have mostly used Adam~\cite{adam}. This decision, too, was influenced by the DDPG paper. However, RMSProp~\cite{rmsprop} can be used as well and was also tested in the experiments.
 To make comparisons of experiments easier, I also implemented a script that plots the average win rates over a given amount of games which helps to see the change of~results. \medskip
 
 The code for the actor and critic networks and subsequently their learning was heavily based on Ben Lau's~\cite{torcs} who also used Keras with TensorFlow to train an agent for the racing game TORCS (recreating the DDPG paper's results in~Python).
@@ -221,7 +221,7 @@ The code for the actor and critic networks and subsequently their learning was h
 
 \section{Experiments}
 
-The experiments in this section were mostly conducted with different versions of the code because improvements were continuously added. In the earlier experiments, some data was lost due to access issues but this will not affect the documentation in any way.
+The experiments in this section were mostly conducted with different versions of the code because improvements were continuously added. In the earlier experiments, some data was lost due to access issues but this does not affect the documentation in any way.
 To save space, \hyperref[table:parameters]{table~\ref*{table:parameters} on page~\pageref*{table:parameters}} lists the default parameters.
 I will only document changes to those parameters; the ones not mentioned will have the same value as in the table. For each section, assume that parameters are set to the default parameters again. The $\varepsilon$~in the table, described as ``$\varepsilon$~for numerical stability'' is a different one from the $\epsilon$~for the $\epsilon$-greedy strategy. $\varepsilon$~is a parameter for the optimizers which mostly affects Adam. The documentation of TensorFlow states that it is recommended to change this value from the default of~$\expn{1}{-8}$ because it might not be a good~choice~\cite{tfadam}.
 
@@ -278,7 +278,7 @@ The default parameters are the starting point for the experiments of this subsec
 
 To try and surpass the results of experiment~9, I increased the amount of neurons to~100 for the second layer as well, leading us to experiment~10. Results looked promising as learning was more stable than in experiment~9. Sadly, a sudden drop at episode~9\,000 nullified all previous learning as the agent was not able to return back to its high win rate during the last 1\,000~episodes, keeping the win rate close to~zero. Interestingly, experiment~10 completed over three hours faster than experiment~9 with only about 1.82~seconds per episode. It is not easy to say for certain what caused this. Maybe the network learned which actions were illegal more quickly or maybe simply fewer people were using the~computer.
 
-The amount of neurons in both layers was swapped in experiment~11  ($n_1$ was~50 and $n_2$ was~100 for both networks) resulting in less stable learning. Ultimately, though, a win rate similar to experiment~9 was reached.
+The amount of neurons in both layers was swapped in experiment~11 (so we have 50~neurons in the first and~100 in the second layer for both networks) resulting in less stable learning. Ultimately, though, a win rate similar to experiment~9 was reached.
 
 Next, I wanted to try weighting the amount of trump cards more. Sadly, experiment~12 is where I probably made a mistake documenting the parameters. I had $\epsilon$ start listed as 0.1. Looking at the win rate, this might not be true, though, as the win rate decreased with more episodes spiking only at the very end for a short time. On the other hand, the results were too bad for only changing a reward weight (to a value making sense, too) suggesting that something went wrong. My first impression was that the function was stuck at a local optimum so I redid the experiment. Ignoring what went wrong in the first try, the experiment ended after over 9~hours with approximately 3.32~seconds per episode. The results were similar to experiment 9. As there are only a few cards in the deck, changing the reward could not make a big difference. To speed up computation, I compiled TensorFlow from sources activating SSE4.1 and SSE4.2~(probably unnecessary) instructions which were available on all computers I could use for the calculations. The faster version was used from the second try of experiment~12 and~onward.
 
@@ -303,7 +303,19 @@ Even with all the parameter tuning in this section, I was not able to increase K
 
 From now on, I will mostly focus on full classic durak. The rules stay the same but the deck contains 36~cards and the players start with 6~cards in hand. To fit the parameters to the more complex and larger problem, the default parameters are now modified for all experiments in this subsection except when mentioned otherwise: We now let the agent learn for 5\,000~episodes instead of~10\,000 because games take much longer (eventually we will see that the agent learns more than twice as much even though the episodes are halved). Correspondingly, $\epsilon$~episodes is also halved to be~3\,000 instead of~6\,000. The win and loss rewards are~36 and~$-36$ respectively to fit the deck~size.
 
-AASDASD
+For the very first experiment in this subsection, I let the agent learn full durak with 52~cards in the deck and 6~cards in hand. I used a win reward of 50 and a loss reward of $-50$. After almost exactly thirty and a half hours, taking around 21.96~seconds per episode, Kraudia achieved a total win rate of~56.20~\% and stuck at around 80~\%~win rate at the end. The results are found in \hyperref[fig:exp21]{figure~\ref*{fig:exp21}}. I was very surprised by Kraudia's great success at adapting to the much harder, larger domain of the full game as so few tweaks have been made (only two parameters were changed). Learning was stable with only one drop at around 2\,000~episodes which was probably bad luck. During each game, on average 66.2~turns were played resulting in 330938~training~instances.
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../experiments/exp21/win_stats.pdf}
+  \caption{Results of experiment~21}
+  \label{fig:exp21}
+\end{figure}
+
+At the same time I started another experiment for full classic durak, also with win and loss rewards of~50 and~$-50$ respectively. Sadly, because of a mistake on my side, I cannot provide the time it took to complete and amount of training the networks had. The results, though, show that training was stable and successful: After episode~3\,000, Kraudia stays at a win rate of about~70~\%.
+
+From experiment~23 on I use the rewards mentioned at the beginning of this subsection. I also increased the number of neurons in the second hidden layer to~100 for both networks in hopes of finding more information in the larger feature vector. However, this had the opposite effect: Learning was destabilized and the win rate at the final episodes was also a little less than in the previous~experiment. The experiment finished in roughly 11~hours with 7.92~seconds per episode on average.
+
+In experiment~24 I continue the trend of more neurons by setting the amount of neurons to~120 in the first and~60 in the second layer for both networks. I also tried adjusting the reward weights by giving the amount of trumps more value ($w_c = 3$, previously~2). With approximately 8.32~seconds per episode, experiment~24 took more than eleven and a half hours to complete. The computation time necessary for the increased amount of weights seems to be wasted, though, as results were similar to those of experiment~22.
 
 \newpage
 
@@ -338,10 +350,8 @@ The code is available online on GitHub at \url{github.com/janEbert/rldurak}. \bi
     $\varepsilon$~critic & $\expn{1}{-8}$ \\
     $\tau$~actor & 0.01 & target model update factor \\
     $\tau$~critic & 0.01 \\
-    $n_1$~actor & 100 & neurons in the first hidden layer \\
-    $n_1$~critic & 100 \\
-    $n_2$~actor & 50 & neurons in the second hidden layer \\
-    $n_2$~critic & 50 \\
+    neurons per layer~actor & [100, 50] & neurons in each hidden layer \\
+    neurons per layer~critic & [100, 50] \\
     $\gamma$ & 0.99 & discount factor \\
     max experience count & 500 \\
     batch size & 32 \\
