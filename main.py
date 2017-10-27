@@ -993,6 +993,8 @@ if __name__ == '__main__':
             names.append('Kraudia')
     if human_indices:
         assert kraudia_ix not in human_indices, 'Kraudia cannot be a human'
+        for ix in learner_indices:
+            assert ix not in human_indices, 'Cannot be human and learning AI'
         verbose = True
         print('You have two minutes for each input')
     first_human_indices = human_indices[:]
