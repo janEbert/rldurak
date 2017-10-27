@@ -73,6 +73,7 @@ chi_sigma = 0.1
 # it attacks
 wait_until_defended = True
 learn = True # whether the agent learns
+learner_indices = [0, 1] # which agents learn (for only AIs)
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
@@ -444,6 +445,7 @@ def remove_player(player_ix, hand_means):
     if only_ais:
         del hand_means[player_ix]
         remove_model(player_ix)
+        remove_from_learner_indices(player_ix)
     if player_ix in human_indices:
         remove_from_human_indices(player_ix)
     return hand_means, game.remove_player(player_ix)
@@ -455,6 +457,14 @@ def remove_model(player_ix):
     """
     actors.append(actors.pop(player_ix))
     critics.append(critics.pop(player_ix))
+
+
+def remove_from_learner_indices(player_ix):
+    """Remove the given player from the list of learner indices."""
+    global learner_indices
+    update_ix = lambda ix: ix - 1 if player_ix < ix else ix
+    learner_indices.remove(player_ix)
+    learner_indices = [update_ix(ix) for ix in learner_indices]
 
 
 def remove_from_human_indices(player_ix):
@@ -560,7 +570,7 @@ def train(state, action, reward, new_state):
 def train_from_memory():
     """Train the networks with data from memory."""
     if only_ais:
-        for ix in range(game.player_count):
+        for ix in learner_indices:
             if len(experiences) >= batch_size:
                 batch = sample(experiences, batch_size)
             else:
