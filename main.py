@@ -444,7 +444,8 @@ def remove_player(player_ix, hand_means):
     if only_ais:
         del hand_means[player_ix]
         remove_model(player_ix)
-        remove_from_learner_indices(player_ix)
+        if player_ix in learner_indices:
+            remove_from_learner_indices(player_ix)
     if player_ix in human_indices:
         remove_from_human_indices(player_ix)
     return hand_means, game.remove_player(player_ix)
