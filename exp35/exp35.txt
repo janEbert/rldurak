@@ -1,5 +1,0 @@
-same parameters as in exp26
-except
-third layer in actor and critic networks with 25 neurons
-
-

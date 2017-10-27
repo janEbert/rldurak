@@ -1,0 +1,7 @@
+same parameters as in exp26
+except
+third layer in actor and critic networks with 25 neurons
+
+Finished 5000/5000 episodes after 72221.56 seconds; average: 14.44 seconds per episode
+Kraudia won 2767/5000 games which is a win rate of 55.34 %
+The neural network was trained a total of 194347 times
