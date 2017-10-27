@@ -11,7 +11,6 @@ from random import choice, sample
 from time import clock
 from traceback import print_exc
 
-import keras.backend as K
 from keras.utils import plot_model
 import numpy as np
 import tensorflow as tf
@@ -1042,7 +1041,6 @@ if __name__ == '__main__':
                         epsilon_critic, tau_critic, neurons_per_layer_critic)))
     else:
         sess = tf.Session(config=tf.ConfigProto())
-        # K.set_session(sess)
         actor = actor_m.Actor(sess, state_shape, action_shape, load, optimizer,
                 alpha_actor, epsilon_actor, tau_actor, neurons_per_layer_actor)
         critic = critic_m.Critic(sess, state_shape, action_shape, load,
