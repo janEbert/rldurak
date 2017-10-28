@@ -53,7 +53,6 @@ full classic game
 
 
 load exp26 weights, and continue training with epsilon at 0.1. exp31 does the same but resets epsilon
-on april
 
 Finished 5000/5000 episodes after 13821.61 seconds; average: 2.76 seconds per episode
 Kraudia won 213/5000 games which is a win rate of 4.26 %
