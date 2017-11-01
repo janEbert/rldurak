@@ -940,7 +940,7 @@ def store_experience(experience):
     global experience_ix
     if len(experiences) == max_experience_count:
         experiences[experience_ix] = experience
-        if experience_ix == max_experience_count - 1:
+        if experience_ix >= max_experience_count - 1:
             experience_ix = 0
         else:
             experience_ix += 1
