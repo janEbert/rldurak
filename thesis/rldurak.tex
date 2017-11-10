@@ -29,7 +29,6 @@
 \newcommand{\expn}[2]{{#1}\mathrm{e}{#2}}
 
 \title{Reinforcement Learning for Durak \\ \medskip \large{Bachelor's Thesis on Reinforcement Learning}}
-%\subtitle{Bachelor's Thesis on Reinforcement Learning}
 \author{Jan Ebert \smallskip \\ \\ \small{Cognitive Informatics} \\ \small{Faculty of Technology}}
 \date{\today}
 
@@ -340,6 +339,7 @@ Combining the amount of neurons in experiment~6 and the learning rates and updat
 Looking at the past five experiments, a very interesting pattern can be found: The better the agent becomes, the longer the games take. The following numbers denote the amount of times the agent has learned from a batch from memory. Going from worst to best, in experiment~5 where bad results were observed (18.63~\%~total win rate), the network was trained about 79\,896~times. Experiment~7 had a total win rate that was roughly 9~percentage points~(pp) better and was trained 83\,938~times. For experiment~6, the amount of training increased to~90\,576 even though the total win rate was only almost 5~pp better. This is because the win rate~-- and subsequently game length~-- was much more stable during experiment~6. With a total win rate of~41.79~\% in experiment~8, the network was trained 92\,082~times. Experiment~9 takes the cake with 93\,993~training runs and a total win rate~of~43.29~\%.
 
 \subsection{Further Parameter Tuning (10 to 20)}
+\label{sec:tuning}
 
 The default parameters are the starting point for the experiments of this subsection except for the feature type which is set to~2 up until~experiment~16.
 
@@ -353,7 +353,9 @@ With experiment~13, I wanted to test an agent versus agent scenario but it took 
 
 Experiment~14 uses RMSProp as its optimizer with reward weights set to $w_v = 4$, $w_t = 3$, $w_c = 6$. Results continually decreased~-- either the parameters were not suited for RMSProp or RMSProp does not work well with DDPG. To test whether the reward weights might have influenced the result negatively, I recreated experiment~14 with Adam as the optimizer in experiment~15. After about 6~hours and 45~minutes with roughly 2.43~seconds per episode, it was clear that the reward weights were not fitting. The win rate oscillated heavily, reaching~0~\% during some periods and going above~50~\% during~others.
 
-Finally, I decided to test feature type~1 bringing us to experiment~16  which uses the default parameters with no exceptions. With close to 3.11~seconds per episode, experiment~16 took over eight and a half hours. The time was well spent: Feature type~1 showed more stable results than feature type~2 and has the added benefit of resulting in a smaller feature vector which decreases computation time. See \hyperref[fig:exp16]{figure~\ref*{fig:exp16}} for the results. It is also worth mentioning that experiment~16 uses the same parameters as experiment~9 except for the feature type. No better parameters were found in the experiments~between.
+Finally, I decided to test feature type~1 bringing us to experiment~16  which uses the default parameters with no exceptions. With close to 3.11~seconds per episode, experiment~16 took over eight and a half hours. The time was well spent: Feature type~1 showed more stable results than feature type~2 and has the added benefit of resulting in a smaller feature vector which decreases computation time while the feature updates themselves are less computationally expensive as well. See \hyperref[fig:exp16]{figure~\ref*{fig:exp16}} for the results. It is also worth mentioning that experiment~16 uses the same parameters as experiment~9 except for the feature type. No better parameters were found in the experiments between.
+
+Only after finishing all experiments did I notice that there was an error in feature type~2 that would cause the less stable results. While still being a relatively good feature vector, obviously this impacts all results using feature type~2. This might mean that feature type~1 does not cause better results than feature type~2, however, the benefit of decreased computation time is still a given, so using feature type~1 from now on is not a bad~choice.
 \begin{figure}
   \centering
   \includegraphics[width=\textwidth]{../experiments/exp16/win_stats.pdf}
@@ -412,6 +414,8 @@ Up until now I have always used only two hidden layers to keep the computational
 The experiments show that Kraudia learns to play better than a player that simply acts at random. The win rate is not as high as expected for playing against a random bot. This could be because durak is based more on luck than expected or because the agent is simply not playing well enough. As this can be tested by letting the agent learn against itself, that is one of the next steps in refining the agent. Sadly, this also means that the question whether durak can be classified as a game of skill cannot yet be~answered.
 
 Whether representing the cards' location by indices works for indices greater than one has to be tested with more players in the game. However, for two players it outclassed the binary card location representation not only by efficiency but by results as well. If the representation by indices applies to more than two players, a new, better representation for the location of cards in card games has been found and may be applied to other problems as well in which previously binary features had to be used. Since no more than two players were tested in depth, we also do not know how the agent would reply to multiple other players. Results could be completely different in the end. Also, it is interesting to test whether removing the minimal prior knowledge (see~\hyperref[sec:behaviour]{section~\ref*{sec:behaviour}}) greatly influences the result. This is especially important for more than two players as for only two players, it is always optimal to play with the implemented behaviour. Testing more than two players is also very important to verify and reinforce the results of this~thesis.
+
+As mentioned in \hyperref[sec:tuning]{section~\ref*{sec:tuning}}, the results for feature type~2 are not completely correct and it should once again be tested against feature type~1 to find out whether it might actually be better.
 
 All in all, most of the parameters were adequately fitted to the problem while the experiments remained relatively time efficient. It is obvious that a properly designed reward function had a big impact on the performance of the agent. After shaping the rewards, reinforcement learning actually~worked.
 
