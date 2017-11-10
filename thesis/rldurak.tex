@@ -185,9 +185,13 @@ To stabilize learning, the two main methods used by the deep Q-network are also 
 	      \State Update critic by minimizing loss $L = \frac{1}{N} \sum_i (y_i - q(s_i, a_i | \theta_q))^2$
 	      \State Update actor policy using the sampled policy gradient:
 	      \begin{equation*}
-	        \nabla_{\theta_\pi} J &\approx \frac{1}{N} \sum_i \nabla_a q(s_i, a | \theta_q) | s_i, a = \pi(s_i) \nabla_{\theta_\pi} \pi(s_i | \theta_\pi)}
+	        \nabla_{\theta_\pi} J \approx \frac{1}{N} \sum_i \nabla_a q(s_i, a | \theta_q) | s_i, a = \pi(s_i) \nabla_{\theta_\pi} \pi(s_i | \theta_\pi)
 	      \end{equation*}
-	      \State Update target networks $\theta_\pi' \gets \tau_\pi \theta_\pi + (1 - \tau_\pi) \theta_\pi'$, $\theta_\q' \gets \tau_\q \theta_\q + (1 - \tau_\q) \theta_\q'$
+	      \State Update target networks:
+	      \begin{equation*}
+	        theta_\pi' \gets \tau_\pi \theta_\pi + (1 - \tau_\pi) \theta_\pi', \\
+	        \theta_q' \gets \tau_q \theta_q + (1 - \tau_q) \theta_q'$
+	      \end{equation*}
 	    \EndFor
 	  \EndFor
   \end{algorithmic}
