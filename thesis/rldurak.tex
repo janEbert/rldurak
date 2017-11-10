@@ -14,7 +14,7 @@
 \usepackage{algpseudocode}
 \usepackage{booktabs}
 
-\hyphenation{Du-rak Krau-dia Ap-prox-i-ma-tors Non-lin-ear Tu-ple Tu-ples Pa-ram-e-ter-ized Stochas-tic Op-ti-miza-tion Sub-game}
+\hyphenation{Du-rak Krau-dia Ap-prox-i-ma-tors Non-lin-ear Tu-ple Tu-ples Pa-ram-e-ter-ized Stochas-tic Op-ti-miza-tion Sub-game Pseu-do-code}
 
 \widowpenalty=300
 \clubpenalty=300
@@ -165,7 +165,7 @@ DDPG uses two artificial neural networks for its approximations, one each for th
 \end{align*}
 where $J$ is the start distribution with respect to the actor's parameters and $\rho_\beta$ is the discounted state visitation distribution for policy~$\beta$ from which is learned (as DDPG is~off-policy).
 
-To stabilize learning, the two main methods used by the deep Q-network are also applied: Experience replay and having a second target network. The target network, however, has been modified to slowly track the actual network's learned values instead of copying it every $C$~steps. For that, we use the following formula for either network (each with their own $\tau$) with $\tau \ll 1$ and $\theta'$ as the target: $\theta' = \tau \theta + (1 - \tau) \theta'$. \hyperref[alg:ddpg]{Algorithm~\ref*{alg:ddpg}}countains pseudocode for~DDPG.
+To stabilize learning, the two main methods used by the deep Q-network are also applied: Experience replay and having a second target network. The target network, however, has been modified to slowly track the actual network's learned values instead of copying it every $C$~steps. For that, we use the following formula for either network (each with their own $\tau$) with $\tau \ll 1$ and $\theta'$ as the target: $\theta' = \tau \theta + (1 - \tau) \theta'$. \hyperref[alg:ddpg]{Algorithm~\ref*{alg:ddpg}} contains pseudocode for the DDPG~algorithm.
 
 \begin{algorithm}
   \caption{DDPG algorithm}
@@ -188,10 +188,10 @@ To stabilize learning, the two main methods used by the deep Q-network are also 
 	        \nabla_{\theta_\pi} J \approx \frac{1}{N} \sum_i \nabla_a q(s_i, a | \theta_q) | s_i, a = \pi(s_i) \nabla_{\theta_\pi} \pi(s_i | \theta_\pi)
 	      \end{equation*}
 	      \State Update target networks:
-	      \begin{equation*}
-	        theta_\pi' \gets \tau_\pi \theta_\pi + (1 - \tau_\pi) \theta_\pi', \\
-	        \theta_q' \gets \tau_q \theta_q + (1 - \tau_q) \theta_q'$
-	      \end{equation*}
+	      \begin{align*}
+	        \theta_\pi' &\gets \tau_\pi \theta_\pi + (1 - \tau_\pi) \theta_\pi', \\
+	        \theta_q' &\gets \tau_q \theta_q + (1 - \tau_q) \theta_q'
+	      \end{align*}
 	    \EndFor
 	  \EndFor
   \end{algorithmic}
@@ -290,10 +290,13 @@ The code for the actor and critic networks and subsequently their learning was h
 \newpage
 
 \section{Experiments}
+\label{sec:experiments}
 
 The experiments in this section were mostly conducted with different versions of the code because improvements were continuously added. In the earlier experiments, some data was lost due to access issues but this does not affect the documentation in any way.
 To save space, \hyperref[table:parameters]{table~\ref*{table:parameters} on page~\pageref*{table:parameters}} lists the default parameters.
 I will only document changes to those parameters; the ones not mentioned will have the same value as in the table. For each section, assume that parameters are set to the default parameters again. The $\varepsilon$~in the table, described as ``$\varepsilon$~for numerical stability'' is a different one from the $\epsilon$~for the $\epsilon$-greedy strategy. $\varepsilon$~is a parameter for the optimizers which mostly affects Adam. The documentation of TensorFlow states that it is recommended to change this value from the default of~$\expn{1}{-8}$ because it might not be a good~choice~\cite{tfadam}.
+
+Only after finishing all experiments did I notice that there was an error in feature type~2 that would cause less stable and worse results. While still, even with the error, being a relatively good feature vector, obviously this impacts all results using feature type~2. This might mean that feature type~1 does not cause better results than feature type~2; however, the benefit of decreased computation time is still a given, so using feature type~1 after having tested it is not a bad~choice.
 
 For the sole reason of wanting to include it, I will from now on call the agent \emph{Kraudia}.
 Recall that in this section, I will focus on a reduced version of durak with only 12~cards in the deck, 3~cards in hand and two players. The most prevalent reason for this is time: Not only do the games finish earlier but also the feature vector is smaller leading to fewer computations per training step.
@@ -343,7 +346,6 @@ Combining the amount of neurons in experiment~6 and the learning rates and updat
 Looking at the past five experiments, a very interesting pattern can be found: The better the agent becomes, the longer the games take. The following numbers denote the amount of times the agent has learned from a batch from memory. Going from worst to best, in experiment~5 where bad results were observed (18.63~\%~total win rate), the network was trained about 79\,896~times. Experiment~7 had a total win rate that was roughly 9~percentage points~(pp) better and was trained 83\,938~times. For experiment~6, the amount of training increased to~90\,576 even though the total win rate was only almost 5~pp better. This is because the win rate~-- and subsequently game length~-- was much more stable during experiment~6. With a total win rate of~41.79~\% in experiment~8, the network was trained 92\,082~times. Experiment~9 takes the cake with 93\,993~training runs and a total win rate~of~43.29~\%.
 
 \subsection{Further Parameter Tuning (10 to 20)}
-\label{sec:tuning}
 
 The default parameters are the starting point for the experiments of this subsection except for the feature type which is set to~2 up until~experiment~16.
 
@@ -357,9 +359,7 @@ With experiment~13, I wanted to test an agent versus agent scenario but it took 
 
 Experiment~14 uses RMSProp as its optimizer with reward weights set to $w_v = 4$, $w_t = 3$, $w_c = 6$. Results continually decreased~-- either the parameters were not suited for RMSProp or RMSProp does not work well with DDPG. To test whether the reward weights might have influenced the result negatively, I recreated experiment~14 with Adam as the optimizer in experiment~15. After about 6~hours and 45~minutes with roughly 2.43~seconds per episode, it was clear that the reward weights were not fitting. The win rate oscillated heavily, reaching~0~\% during some periods and going above~50~\% during~others.
 
-Finally, I decided to test feature type~1 bringing us to experiment~16  which uses the default parameters with no exceptions. With close to 3.11~seconds per episode, experiment~16 took over eight and a half hours. The time was well spent: Feature type~1 showed more stable results than feature type~2 and has the added benefit of resulting in a smaller feature vector which decreases computation time while the feature updates themselves are less computationally expensive as well. See \hyperref[fig:exp16]{figure~\ref*{fig:exp16}} for the results. It is also worth mentioning that experiment~16 uses the same parameters as experiment~9 except for the feature type. No better parameters were found in the experiments between.
-
-Only after finishing all experiments did I notice that there was an error in feature type~2 that would cause the less stable results. While still being a relatively good feature vector, obviously this impacts all results using feature type~2. This might mean that feature type~1 does not cause better results than feature type~2, however, the benefit of decreased computation time is still a given, so using feature type~1 from now on is not a bad~choice.
+Finally, I decided to test feature type~1 bringing us to experiment~16  which uses the default parameters with no exceptions. With close to 3.11~seconds per episode, experiment~16 took over eight and a half hours. The time was well spent: Feature type~1 showed more stable results than feature type~2 and has the added benefit of resulting in a smaller feature vector which decreases computation time while the feature updates themselves are less computationally expensive as well. See \hyperref[fig:exp16]{figure~\ref*{fig:exp16}} for the results. It is also worth mentioning that experiment~16 uses the same parameters as experiment~9 except for the feature type. No better parameters were found in the experiments~between.
 \begin{figure}
   \centering
   \includegraphics[width=\textwidth]{../experiments/exp16/win_stats.pdf}
@@ -419,7 +419,7 @@ The experiments show that Kraudia learns to play better than a player that simpl
 
 Whether representing the cards' location by indices works for indices greater than one has to be tested with more players in the game. However, for two players it outclassed the binary card location representation not only by efficiency but by results as well. If the representation by indices applies to more than two players, a new, better representation for the location of cards in card games has been found and may be applied to other problems as well in which previously binary features had to be used. Since no more than two players were tested in depth, we also do not know how the agent would reply to multiple other players. Results could be completely different in the end. Also, it is interesting to test whether removing the minimal prior knowledge (see~\hyperref[sec:behaviour]{section~\ref*{sec:behaviour}}) greatly influences the result. This is especially important for more than two players as for only two players, it is always optimal to play with the implemented behaviour. Testing more than two players is also very important to verify and reinforce the results of this~thesis.
 
-As mentioned in \hyperref[sec:tuning]{section~\ref*{sec:tuning}}, the results for feature type~2 are not completely correct and it should once again be tested against feature type~1 to find out whether it might actually be better.
+As mentioned in \hyperref[sec:experiments]{section~\ref*{sec:experiments}}, the results for feature type~2 are not completely correct and it should once again be tested against feature type~1 to find out whether it might actually be better.
 
 All in all, most of the parameters were adequately fitted to the problem while the experiments remained relatively time efficient. It is obvious that a properly designed reward function had a big impact on the performance of the agent. After shaping the rewards, reinforcement learning actually~worked.
 
