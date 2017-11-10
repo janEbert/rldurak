@@ -10,6 +10,8 @@
 \usepackage[justification=centering]{caption}
 \usepackage[hidelinks]{hyperref}
 \usepackage[nottoc,numbib]{tocbibind}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{booktabs}
 
 \hyphenation{Du-rak Krau-dia Ap-prox-i-ma-tors Non-lin-ear Tu-ple Tu-ples Pa-ram-e-ter-ized Stochas-tic Op-ti-miza-tion Sub-game}
@@ -53,7 +55,7 @@ This thesis and the corresponding code have been written solely by myself, Jan~E
 
 \begin{abstract}
 \setcounter{page}{3}
-I adapt the successful deep deterministic policy gradient algorithm to the card game durak. The proposed model is supposed to work for most variants of durak. The model successfully learns durak's rules with minimal prior knowledge and demonstrates better results than simply playing at~random.
+I adapt the successful deep deterministic policy gradient algorithm to the card game durak. The proposed model is supposed to work for most variants of durak. With only miminal prior knowledge, the model successfully learns durak's rules and demonstrates better results than simply playing at~random.
 \end{abstract}
 
 \setcounter{page}{4}
@@ -133,7 +135,7 @@ We seek an optimal policy~$\pi_*$ that fulfils $q_{\pi_*}(s, a) \doteq \max_\pi 
 The environment providing each state can be modelled, meaning that for a given state, every probability and expected reward for each new state is defined. These values are used to plan actions by considering all possible future states, their chances of occurring and their reward. This is in contrast to simply learning by trial and error on a simulated model. It is much easier to simulate a complex problem than it is to perfectly model its environment. That is why I am going to concentrate on \emph{model-free} algorithms that rely on simulations instead of doing the Sisyphean work of calculating every single probability of durak. Even though, model-based approaches are more theoretically sound and can be built upon by dynamic programming. Also, model-based approaches can be combined with model-free ones so that the agent might learn the model itself as well.
 
 A central idea of reinforcement learning is that of temporal-difference learning. Changes in training are based on the comparison, or the \emph{difference}, of an old action-value and a new one with an associated reward. The method of only calculating the difference of the old action-value to the directly following action-value (with the associated reward) is called TD(0). TD(1) calculates the difference from the very last action-value received to the first one. In between those two are TD($\lambda$)~methods with $0 \leq \lambda \leq 1$ which weigh future action-values depending on~$\lambda$, similar to the discount factor~$\gamma$. We will focus only on TD(0) which is the basis of the backups considered in this thesis. Backups are changes during learning where new values are calculated from older values. The new value is \emph{backed up} from the old value.
-As an example, the  \emph{very simplified} temporal difference loss that the agent will train on is this: $L = (r_t + \gamma q(s_{t+1}, a_{t+1} \sim \pi) - q(s_t, a_t))^2$ (see~\hyperref[sec:ddpg]{section~\ref*{sec:ddpg}})
+As an example, the  \emph{very} simplified temporal difference loss that the agent will train on is this: $L = (r_t + \gamma q(s_{t+1}, a_{t+1} \sim \pi) - q(s_t, a_t))^2$ (see~\hyperref[sec:ddpg]{section~\ref*{sec:ddpg}})
 
 The balance of exploitation against exploration is a big problem in reinforcement learning. Exploitation is simply taking the action with the most return associated to it, so the acquired knowledge is exploited. But it is also important to consider other actions and learn that they might offer an even better return than the action suggested by the current policy. That is exploration: Trying out new actions and observing whether they are useful. To solve this problem, often, an $\epsilon$-greedy strategy (with $0 \leq \epsilon \leq 1$) is applied. The action with the maximum associated return (that is $\max_{a_t} q_\pi(s_t, a_t)$) is taken $(1 - \epsilon)$~of the time (the greedy aspect) and a random action is taken with probability~$\epsilon$, so $\epsilon$ manages the amount of exploration by the agent. Because of their simplicity and effectiveness, $\epsilon$-greedy strategies are the most used in reinforcement learning. I will also apply an $\epsilon$-greedy strategy wherein~$\epsilon$ is decreased during learning. At the beginning, the agent will only explore~($\epsilon = 1$). With ongoing time it will exploit more and more often; $\epsilon$ will never decrease to~0, though, to still guarantee~exploration.
 
@@ -155,16 +157,42 @@ However, large neural networks were known to not converge for most action-value 
 \subsection{Deep Deterministic Policy Gradient}
 \label{sec:ddpg}
 
-DDPG is a model-free, off-policy, actor-critic algorithm that was designed to solve tasks on the continuous action domain. \emph{Actor-critic} means that instead of learning an action-value function and choosing an action based on that, meaning that the policy is inferred by the action-value estimates, a parameterized policy is learned that selects actions without being based on the action-value function. The action-value function is still important to learn the policy's parameters, so it also needs to be learned even though it is not required for action selection. Thus, there are two functions to learn: One calculates which action to take in a given game state, the ``actor'', and one approximates the action-value function so as to give the actor feedback on its decision and help it learn. Therefore, that function is called the~``critic''.
+DDPG is a model-free, off-policy, actor-critic algorithm that was designed to solve tasks on the continuous action domain. \emph{Actor-critic} means that instead of learning an action-value function and choosing an action based on that, meaning that the policy is inferred by the action-value estimates, a parameterized policy is learned that selects actions without being based on the action-value function. The action-value function is still important to learn the policy's parameters, so it also needs to be learned even though it is not required for action selection. Thus, there are two functions to learn: One calculates which action to take in a given game state, the ``actor'', and one approximates the action-value function so as to give the actor feedback on its decision during learning and therefore help it find better, more rewarding, actions. Therefore, that function is called the~``critic''.
 
-DDPG uses two artificial neural networks for its approximations, one each for the actor and critic network with the corresponding weight vectors~$\theta_A$ and~$\theta_C$ and functions~$\pi(s_t | \theta_A)$ and~$q(s_t, a_t | \theta_C)$. Our goal is to learn a policy that maximizes the expected return from the start distribution~$J = \Ex{r_i, s_i; a_i \sim \pi}{R_1}$. The critic learns using the Bellman equation while the actor optimizes the gradient of its policy's performance, the \emph{policy gradient}, defined like~so:
+DDPG uses two artificial neural networks for its approximations, one each for the actor and critic network with the corresponding weight vectors~$\theta_\pi$ and~$\theta_q$ and functions~$\pi(s_t | \theta_\pi)$ and~$q(s_t, a_t | \theta_q)$. Our goal is to learn a policy that maximizes the expected return from the start distribution~$J = \Ex{r_i, s_i; a_i \sim \pi}{R_1}$. The critic learns using the Bellman equation while the actor optimizes the gradient of its policy's performance, the \emph{policy gradient}, defined like~so:
 \begin{align*}
-  \nabla_{\theta_A} J &\approx \Exp{s_t \sim \rho_\beta}{\nabla_{\theta_A} q(s_t, a | \theta_C)}{s_t, a = \pi(s_t | \theta_A)} \\
-  &= \Exp{s_t \sim \rho_\beta}{\nabla_a q(s_t, a | \theta_C)}{s_t, a = \pi(s_t) \nabla_{\theta_A} \pi(s_t | \theta_A)},
+  \nabla_{\theta_\pi} J &\approx \Exp{s_t \sim \rho_\beta}{\nabla_{\theta_\pi} q(s_t, a | \theta_q)}{s_t, a = \pi(s_t | \theta_\pi)} \\
+  &= \Exp{s_t \sim \rho_\beta}{\nabla_a q(s_t, a | \theta_q)}{s_t, a = \pi(s_t) \nabla_{\theta_\pi} \pi(s_t | \theta_\pi)},
 \end{align*}
 where $J$ is the start distribution with respect to the actor's parameters and $\rho_\beta$ is the discounted state visitation distribution for policy~$\beta$ from which is learned (as DDPG is~off-policy).
 
-To stabilize learning, the two main methods used by the deep Q-network are also applied: Experience replay and having a second target network. The target network, however, has been modified to slowly track the actual network's learned values instead of copying it every $C$~steps. For that, we use the following formula for either network (each with their own $\tau$) with $\tau \ll 1$ and $\theta'$ as the target: $\theta' = \tau \theta + (1 - \tau) \theta'$.
+To stabilize learning, the two main methods used by the deep Q-network are also applied: Experience replay and having a second target network. The target network, however, has been modified to slowly track the actual network's learned values instead of copying it every $C$~steps. For that, we use the following formula for either network (each with their own $\tau$) with $\tau \ll 1$ and $\theta'$ as the target: $\theta' = \tau \theta + (1 - \tau) \theta'$. \hyperref[alg:ddpg]{Algorithm~\ref*{alg:ddpg}}countains pseudocode for~DDPG.
+
+\begin{algorithm}
+  \caption{DDPG algorithm}
+  \label{alg:ddpg}
+  \begin{algorithmic}
+    \State Randomly initialize actor network $\pi(s | \theta_\pi)$ and critic network $q(s, a | \theta_q)$ with weights $\theta_\pi$ and $\theta_q$
+    \State Initialize target networks $\pi'$ and $q'$ with weights $\theta_\pi' \gets \theta_\pi$ and $\theta_q' \gets \theta_q$
+    \State Initialize replay buffer $R$
+    \For{$\text{episode} = 1, ..., M$}
+      Receive initially observed state $s_1$
+	    \For{$t = 1, ..., T$}
+	      \State Select $a_t = \pi(s_t | \theta_\pi)$ according to the current policy
+	      \State Execute $a_t$ and observe reward $r_t$ and new state $s_{t+1}$
+	      \State Store experience $(s_t, a_t, r_t, s_{t+1})$ in $R$
+	      \State Sample a random minibatch of $N$ experiences $(s_i, a_i, r_i, s_{i+1})$ from $R$
+	      \State $y_i \gets r_i + \gamma q'(s_{i+1}, \pi'(s_{t+1} | \theta_\pi') | \theta_q')$, $\forall i$
+	      \State Update critic by minimizing loss $L = \frac{1}{N} \sum_i (y_i - q(s_i, a_i | \theta_q))^2$
+	      \State Update actor policy using the sampled policy gradient:
+	      \begin{equation*}
+	        \nabla_{\theta_\pi} J &\approx \frac{1}{N} \sum_i \nabla_a q(s_i, a | \theta_q) | s_i, a = \pi(s_i) \nabla_{\theta_\pi} \pi(s_i | \theta_\pi)}
+	      \end{equation*}
+	      \State Update target networks $\theta_\pi' \gets \tau_\pi \theta_\pi + (1 - \tau_\pi) \theta_\pi'$, $\theta_\q' \gets \tau_\q \theta_\q + (1 - \tau_\q) \theta_\q'$
+	    \EndFor
+	  \EndFor
+  \end{algorithmic}
+\end{algorithm}
 
 \newpage
 
@@ -185,7 +213,7 @@ Another problem is that the action space is very large. There are only five diff
 Furthermore, it is not easy to find a general solution for the state vector (or feature vector; I will use these two terms interchangeably) that defines the game's state at a given point in time for arbitrary parameters of durak (amount of cards in deck, hand size, ...). The size of the vector should be the same for all durak parameters so that it can be used by a neural network already trained on other parameters.
 We could index where a card is located from the agent. This would not consume a lot of memory and the feature vector would have the same size for any amount of players. If the deck has duplicates, the problem can be solved by creating two features per card.
 Simply creating a binary feature for each card for each player that determines whether the player holds that card would, contrary to the previous idea, result in a state vector with variable size depending on how many players there are. Because of its large size, this type of feature vector consumes a lot of memory and requires a lot of additional computations for each training step if there are a lot of players and cards.
-This idea can also be generalized for any amount of players thereby solving its memory issues. One could, for example, only store the card information for the two neighbouring players since they are the most important to the agent. Although information is lost when doing this, the state definition can then also be used for any amount of players and cards if the deck has no duplicates. To also have a general state vector for duplicates, we could store how many of each card the two players~have.
+This idea can also be generalized for any amount of players thereby solving its memory issues. One could, for example, only store the card information for the two neighbouring players since they are the most important to the agent. Although information is lost when doing this, the state definition can then also be used for any amount of players and cards if the deck has no duplicates. To also have a general state vector for duplicates, we could store how many of each card the two players have. A problem that arises is that when a player is removed from the game, the agent has no knowledge about the next player's cards. In a setting with only agents, this knowledge can be copied over from the removed player but if there is only one agent tracking the features, there is no information about the player taking the place of the removed~one.
 
 The end goal is to find an agent that can play any durak game well. Using a general state vector, one can test whether the agent is able to generalize on other variants of durak which would be very interesting. 
 Because the amount of cards in the deck also changes, the vector's size can be buffered to contain the maximum allowed number of cards (52~for a standard deck without duplicates). Only the cards in the game are tracked while the other ones are seen as out of the game. The generalization capabilities of the neural networks should make this approach~possible.
@@ -200,13 +228,15 @@ Since the game is played in real time and the actions of the other players influ
 
 For where to find the code, see~\hyperref[sec:appendix]{section~\ref*{sec:appendix}}.
 
-\subsection{Game}
-
 The simulator for games of durak was implemented in Python~\cite{python} for versions~2.7 and~3.5. For the neural networks, the machine learning library Keras~\cite{keras} was used with {TensorFlow}~\cite{tensorflow}  as its backend. I have used Python~3.5 even though TensorFlow for Python~3.6 has been implemented because it is currently labeled unstable. I will refer to players that are not learning as \emph{bots} or \emph{random bots} because they are acting at random. The players that do learn are \emph{agents} like~before.
+
+\subsection{Game}
 
 To keep the simulated games as authentic as possible, I use a thread for each player for the real time aspect. Cards have a numerical value ranging from~0 to~12 and suit ranging from~0 to~4. For generalization purposes, these values are fixed, even if cards have been removed. (An ace will always have value~12, no matter how many cards have been~removed.)
 
 The game is fully customizable supporting different deck and hand sizes~(even duplicates), a variable amount of players, and an optionally fixed trump suit. To make learning easier, I always assign hearts as the trump suit. The suit itself does not matter but when loading an agent, it should be the same as it was trained on. Also, random bots can be turned into agents so that only agents play against each other. When the agent outclasses the random bots, this is the next step for it to learn even further. Humans can challenge a single or multiple agents to see whether the results also apply to ``real''~players. 
+
+What differentiates the program from real durak is that cards can only be placed one at a time. This is important when a player wants to get rid of many cards at once before the other players can react. Especially in a setting where actions are computed instantly, this can change the outcome of games. However, playing only one card at a time greatly simplifies the game and the implementation of the agents. All functions are written so they do support multiple cards, so only the agent would have to be changed to support it. I will suggest how to implement playing multiple cards in~\hyperref[sec:improvements]{section~\ref*{sec:improvements}}.
 
 \subsection{Features}
 
@@ -219,6 +249,12 @@ As an example to explain the differences between the types, assume that the agen
   \item Amount of each card in each neighbour's hand; $(2 + 2) \cdot 52 + 1 + 3 = 212$~features. This is the previous feature vector but reduced to be used for any amount of players. Since this is a smaller version of the features of type~2, the values in the example are the same except for the ones for the player with index~3 who is not observed (because they are not a neighbour of the agent). Those values simply do not~exist.
 \end{enumerate}
 Now there are three extra features in each vector that give crucial information to the game: One for the numerical suit the next player could not defend, one for whether the defending player checks and one for the amount of cards left in the~deck.
+
+\subsection{Actions}
+
+Actions are contained in five-dimensional vectors. The first dimension shows the type of action which ranges from~0 to including~4 (for attacking, defending, pushing, checking and waiting). Then follows the card to be placed which is relevant for attacking, defending and pushing which takes two dimensions to store the card's value and suit. The fourth and fifth dimension are only relevant for defending and contain the value and suit of the card to be defended. If a dimension is irrelevant to the current action, I set it to $-1$.
+
+As the neural networks' outputs are continuous values due to the nature of DDPG and the parameters for the actions are discrete, I simply cut off the values after the decimal point so that only an integer remains.
 
 \subsection{Rewards}
 \label{sec:rewards}
@@ -235,7 +271,7 @@ This value is also normalized to be between~$-1$ and~1 (by normalizing the input
 
 The random bots' behaviour is based on probabilities. With a certain probability, the bots wait and with another, they check. These probabilities are calculated each game based on a normal distribution with a given mean and variance and clipped to have values that make sense. For example, a player cannot always wait (because they have to check at some point) but they \emph{can} never check (therefore always playing all their~cards).
 
-To have some sophisticated behaviour, the random bots wait until all current attacks are defended or the defender checks until they place another one. This is usually the best strategy unless a player wants to get rid of their cards before the maximum amount of cards is placed. This is also implemented for agents but can be toggled to give the agent more freedom in decision making. Assuming the bots' behaviour is not the optimal strategy~-- which is highly likely~-- the agent should achieve better results than the random~bots.
+To have some sophisticated behaviour, the random bots wait until all current attacks are defended or the defender checks until they place another one. This is usually the best strategy unless a player wants to get rid of their cards before the maximum amount of cards is placed (in a two player scenario, this does not matter, though). This is also implemented for agents but can be toggled to give the agent more freedom in decision making. Assuming the bots' behaviour is not the optimal strategy~-- which is highly likely~-- the agent should achieve better results than the random~bots.
 
 \subsection{Parameters}
 
@@ -375,17 +411,22 @@ Up until now I have always used only two hidden layers to keep the computational
 
 The experiments show that Kraudia learns to play better than a player that simply acts at random. The win rate is not as high as expected for playing against a random bot. This could be because durak is based more on luck than expected or because the agent is simply not playing well enough. As this can be tested by letting the agent learn against itself, that is one of the next steps in refining the agent. Sadly, this also means that the question whether durak can be classified as a game of skill cannot yet be~answered.
 
-Whether representing the cards' location by indices works for indices greater than one has to be tested with more players in the game. However, for two players it outclassed the binary card location representation not only by efficiency but by results as well. If the representation by indices applies to more than two players, a new, better representation for the location of cards in card games has been found and may be applied to other problems as well in which previously binary features had to be used. Since no more than two players were tested in depth, we also do not know how the agent would reply to multiple other players. Results could be completely different in the end. Testing more than two players is also very important to verify and reinforce the results in this thesis.
+Whether representing the cards' location by indices works for indices greater than one has to be tested with more players in the game. However, for two players it outclassed the binary card location representation not only by efficiency but by results as well. If the representation by indices applies to more than two players, a new, better representation for the location of cards in card games has been found and may be applied to other problems as well in which previously binary features had to be used. Since no more than two players were tested in depth, we also do not know how the agent would reply to multiple other players. Results could be completely different in the end. Also, it is interesting to test whether removing the minimal prior knowledge (see~\hyperref[sec:behaviour]{section~\ref*{sec:behaviour}}) greatly influences the result. This is especially important for more than two players as for only two players, it is always optimal to play with the implemented behaviour. Testing more than two players is also very important to verify and reinforce the results of this~thesis.
 
 All in all, most of the parameters were adequately fitted to the problem while the experiments remained relatively time efficient. It is obvious that a properly designed reward function had a big impact on the performance of the agent. After shaping the rewards, reinforcement learning actually~worked.
 
-Obviously, a graphical user interface for human players should be added and it would be nice to be able to play against Kraudia online or even on a mobile phone. Using a graphical user interface, Kraudia could also predict which actions are how good by assigning different colors to each cards' actions. The code can be massively optimized to have the experiments end even faster.
+\subsection{Implementation Improvements}
+\label{sec:improvements}
+
+To make the agent play even more optimally, placing multiple cards at a time should be implemented. This could be done by implementing a new type of action that signals that another action follows. Actions and their cards could then be collected in a list and played all at once when the final action~-- signalling that no further action follows~-- is~chosen.
+
+Obviously, a graphical user interface for human players should be added and it would be nice to be able to play against Kraudia online or even on a mobile phone. Using a graphical user interface, Kraudia could also predict which actions are how good by assigning different colors to each cards' actions. The code can be massively optimized to have the experiments end even~faster.
 
 \subsection{Further Methods}
 
 It would be interesting to try and apply \emph{hindsight experience replay}~\cite{her} to the game as hindsight experience replay does not require a shaped reward function (in the paper, it is actually advised against shaping the rewards). In fact, a reward function even more naive than the one that was tested at the very beginning of the experiment is all that is necessary~-- one that rewards $-1$ whenever the agent has not yet won and 1 when it has. Whether hindsight experience replay is actually applicable to the problem obviously remains to be tested but results would probably be better as fewer prior knowledge is required. However, as the agent might only try to win quickly (because of the negative reward at each time step), it might be less successful as~well.
 
-For even more optimal play, we could apply subgame solving for imperfect-information games~\cite{subgame}, also used by the current best heads-up no-limit Texas hold'em poker~AI. This might not have as many uses for durak, though, as bluffing does not play as great a part in it and the game is more limited than poker in the sense that there is less variance in the players' actions (betting in poker is the best example for a lot of variance). However, to get the best and probably more stable results, subgame solving can also be taken into~account.
+For even more optimal play, we could apply subgame solving for imperfect-information games~\cite{subgame}, also used by the current best heads-up no-limit Texas hold'em poker~AI (called Libratus). This might not have as many uses for durak, though, as bluffing does not play as great a part in it and the game is more limited than poker in the sense that there is less variance in the players' actions (betting in poker is the best example for a lot of variance). However, to get the best and probably more stable results, subgame solving can also be taken into~account.
 
 \subsection{Outlook}
 
@@ -463,7 +504,7 @@ The code is available online on GitHub at \url{github.com/janEbert/rldurak}. Ten
 \bibitem{ddpg}
   Lillicrap, Timothy~P., Jonathan~J.\ Hunt, et al. ``Continuous control with deep reinforcement learning.'' \emph{arXiv.org}. arXiv:1509.02971v5, 29~Feb.~2016. Web.
   10~Sep.~2017.,
-  \url{arxiv.org/pdf/1509.02971v5}
+  \url{arxiv.org/abs/1509.02971v5}
 
 \bibitem{python}
   van~Rossum, Guido, et al. ``Python.'' \emph{Python}. Python Software Foundation, 20~Feb.~1991. Web.
