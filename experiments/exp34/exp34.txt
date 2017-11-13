@@ -54,3 +54,6 @@ full classic game
 
 only AIs, two players, no loading
 exp35 loads exp26 results while this is on a raw slate
+
+Finished 5000/5000 episodes after 118971.26 seconds; average: 23.79 seconds per episode
+The neural network was trained a total of 264135 times
