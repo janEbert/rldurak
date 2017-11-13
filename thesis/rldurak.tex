@@ -176,24 +176,24 @@ To stabilize learning, the two main methods used by the deep Q-network are also 
     \State Initialize replay buffer $R$
     \For{$\text{episode} = 1, ..., M$}
       Receive initially observed state $s_1$
-	    \For{$t = 1, ..., T$}
-	      \State Select $a_t = \pi(s_t | \theta_\pi)$ according to the current policy
-	      \State Execute $a_t$ and observe reward $r_t$ and new state $s_{t+1}$
-	      \State Store experience $(s_t, a_t, r_t, s_{t+1})$ in $R$
-	      \State Sample a random minibatch of $N$ experiences $(s_i, a_i, r_i, s_{i+1})$ from $R$
-	      \State $y_i \gets r_i + \gamma q'(s_{i+1}, \pi'(s_{t+1} | \theta_\pi') | \theta_q')$, $\forall i$
-	      \State Update critic by minimizing loss $L = \frac{1}{N} \sum_i (y_i - q(s_i, a_i | \theta_q))^2$
-	      \State Update actor policy using the sampled policy gradient:
-	      \begin{equation*}
-	        \nabla_{\theta_\pi} J \approx \frac{1}{N} \sum_i \nabla_a q(s_i, a | \theta_q) | s_i, a = \pi(s_i) \nabla_{\theta_\pi} \pi(s_i | \theta_\pi)
-	      \end{equation*}
-	      \State Update target networks:
-	      \begin{align*}
-	        \theta_\pi' &\gets \tau_\pi \theta_\pi + (1 - \tau_\pi) \theta_\pi', \\
-	        \theta_q' &\gets \tau_q \theta_q + (1 - \tau_q) \theta_q'
-	      \end{align*}
-	    \EndFor
-	  \EndFor
+      \For{$t = 1, ..., T$}
+        \State Select $a_t = \pi(s_t | \theta_\pi)$ according to the current policy
+        \State Execute $a_t$ and observe reward $r_t$ and new state $s_{t+1}$
+        \State Store experience $(s_t, a_t, r_t, s_{t+1})$ in $R$
+        \State Sample a random minibatch of $N$ experiences $(s_i, a_i, r_i, s_{i+1})$ from $R$
+        \State $y_i \gets r_i + \gamma q'(s_{i+1}, \pi'(s_{t+1} | \theta_\pi') | \theta_q')$, $\forall i$
+        \State Update critic by minimizing loss $L = \frac{1}{N} \sum_i (y_i - q(s_i, a_i | \theta_q))^2$
+        \State Update actor policy using the sampled policy gradient:
+        \begin{equation*}
+          \nabla_{\theta_\pi} J \approx \frac{1}{N} \sum_i \nabla_a q(s_i, a | \theta_q) | s_i, a = \pi(s_i) \nabla_{\theta_\pi} \pi(s_i | \theta_\pi)
+        \end{equation*}
+        \State Update target networks:
+        \begin{align*}
+          \theta_\pi' &\gets \tau_\pi \theta_\pi + (1 - \tau_\pi) \theta_\pi', \\
+          \theta_q' &\gets \tau_q \theta_q + (1 - \tau_q) \theta_q'
+        \end{align*}
+      \EndFor
+    \EndFor
   \end{algorithmic}
 \end{algorithm}
 
@@ -239,7 +239,7 @@ To keep the simulated games as authentic as possible, I use a thread for each pl
 
 The game is fully customizable supporting different deck and hand sizes~(even duplicates), a variable amount of players, and an optionally fixed trump suit. To make learning easier, I always assign hearts as the trump suit. The suit itself does not matter but when loading an agent, it should be the same as it was trained on. Also, random bots can be turned into agents so that only agents play against each other. When the agent outclasses the random bots, this is the next step for it to learn even further. Humans can challenge a single or multiple agents to see whether the results also apply to ``real''~players. 
 
-What differentiates the program from real durak is that cards can only be placed one at a time. This is important when a player wants to get rid of many cards at once before the other players can react. Especially in a setting where actions are computed instantly, this can change the outcome of games. However, playing only one card at a time greatly simplifies the game and the implementation of the agents. All functions are written so they do support multiple cards, so only the agent would have to be changed to support it. I will suggest how to implement playing multiple cards in~\hyperref[sec:improvements]{section~\ref*{sec:improvements}}.
+What differentiates the program from real durak is that cards can only be placed one at a time. This is important when a player wants to get rid of many cards at once before the other players can react (though this does not matter in a two player scenario). Especially in a setting where actions are computed instantly, this can change the outcome of games. However, playing only one card at a time greatly simplifies the game and the implementation of the agents. All functions are written so they do support multiple cards, so only the agent would have to be changed to support it. I will suggest how to implement playing multiple cards in~\hyperref[sec:improvements]{section~\ref*{sec:improvements}}.
 
 \subsection{Features}
 
@@ -296,7 +296,7 @@ The experiments in this section were mostly conducted with different versions of
 To save space, \hyperref[table:parameters]{table~\ref*{table:parameters} on page~\pageref*{table:parameters}} lists the default parameters.
 I will only document changes to those parameters; the ones not mentioned will have the same value as in the table. For each section, assume that parameters are set to the default parameters again. The $\varepsilon$~in the table, described as ``$\varepsilon$~for numerical stability'' is a different one from the $\epsilon$~for the $\epsilon$-greedy strategy. $\varepsilon$~is a parameter for the optimizers which mostly affects Adam. The documentation of TensorFlow states that it is recommended to change this value from the default of~$\expn{1}{-8}$ because it might not be a good~choice~\cite{tfadam}.
 
-Only after finishing all experiments did I notice that there was an error in feature type~2 that would cause less stable and worse results. While still, even with the error, being a relatively good feature vector, obviously this impacts all results using feature type~2. This might mean that feature type~1 does not cause better results than feature type~2; however, the benefit of decreased computation time is still a given, so using feature type~1 after having tested it is not a bad~choice.
+Only after finishing all experiments did I notice that there was an error in feature type~2 that would cause less stable and worse results. While still, even with the error, being a relatively good feature vector, obviously this impacts all results using feature type~2. This might mean that feature type~1 does not result in a better win rate than feature type~2; however, the benefit of decreased computation time is still a given, so using feature type~1 after having tested it is not a bad~choice.
 
 For the sole reason of wanting to include it, I will from now on call the agent \emph{Kraudia}.
 Recall that in this section, I will focus on a reduced version of durak with only 12~cards in the deck, 3~cards in hand and two players. The most prevalent reason for this is time: Not only do the games finish earlier but also the feature vector is smaller leading to fewer computations per training step.
@@ -308,7 +308,7 @@ Kraudia's low win rate at the beginning of each experiment can be explained beca
 
 For all the experiments in this subsection, I used feature type~2 (binary features for each card in each player's hand), and for both networks a learning rate of~0.001, an update factor of~0.001 and only 50~neurons in the first hidden layer. The rewards for winning, losing and waiting were 70,~$-70$ and~$-1$ respectively. During the experiments, I used a very naive reward system that always rewarded zero when an attack ended except for when the defender had to take the cards. The reward for an unsuccessful defence is then given as the amount of cards taken (including the cards put by the~defender).
 
-During the first two experiments, $\epsilon$~did not change after each episode but after each action by any player which was too fast.
+During the first two experiments, $\epsilon$~did not change after each episode but after each action by any player, which was too fast.
 The very first experiment ran only for 1\,000~episodes. After that, because it finished much more quickly than expected~-- in about 48~minutes with nearly 2.88~seconds per episode~--, I increased the amount of episodes to~10\,000.
 Three players (two random bots and the agent) were still in the game. The first experiment's results, being more of a test run, were bad: The win rate was low and rose only a little at the very end. Experiment two, running for 10\,000~episodes but with the same parameters, finished in about 7~hours with approximately 2.5~seconds per episode and shows a spike in win rate a little before episode~6\,000. This spike is sadly only temporary and falls down to a win rate that is worse than playing at random. The reason for the bad win rate is the amount of players: While Kraudia calculates her moves or is stuck at illegal actions, the other bots may have already acted placing all their cards before Kraudia could react. That is the reason why after experiment~3, the player count was decreased to two, eliminating the~problem.
 
@@ -410,6 +410,8 @@ Sadly, experiment~30, which tested more than two players, was interrupted due to
 In experiments~31 and~32, I test whether more training increases Kraudia's win rate further by loading the network weights found by experiment~26. For experiment~31, I start with $\epsilon$~at~1 as usual to give the agent more random results to work with so it does not get stuck at its already found strategy. The total win rate is higher than in experiment~26 which is obvious considering that actions taken at the beginning are already much more refined. Experiment~31 took less than ten and a half hours with roughly 7.51~seconds per episode. In contrast, experiment~32, begins with $\epsilon$~at~0.1, meaning that training basically begins where it left off in experiment~26. Sadly, the results were terrible. Either loading only the weights (without the whole TensorFlow graph information) does not work well when keeping $\epsilon$ low at the beginning or Kraudia simply fails after too many experiments as the agent gets stuck with a bad~strategy. As with all experiments that end badly, experiment~32 took much less time to complete than a successful one. With not even 4~hours of run time and 2.76~seconds per episode on average, experiment~32 took less than half as long as its counterpart~experiment~31.
 
 Up until now I have always used only two hidden layers to keep the computational effort low. However, I still wanted to improve the results so I add a third hidden layer with 25~neurons to both networks (neurons per layer is then [100, 50, 25] for both networks) in experiment~33. The run time exploded: With approximately 14.44~seconds per episode, the experiment took more than 20~hours to complete. Compared to experiment~26, the total win rate was better but not even by 1~pp which means that~-- for me~-- the extra layer and its additional computation time is not worth~it.
+
+\subsection{AI vs AI (34)}
 
 \newpage
 
