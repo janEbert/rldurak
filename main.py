@@ -73,6 +73,9 @@ chi_sigma = 0.1
 wait_until_defended = True
 learn = True # whether the agent learns
 learner_indices = [0, 1] # which agents learn (for only AIs)
+# how many seconds bots and agents wait for the game to be updated
+# increase when computation of actions might take a long time
+wait_time = 2
 action_shape = 5
 
 # 'Kraudia' is added automatically if only_ais is false
@@ -834,7 +837,7 @@ class ActionReceiver(threading.Thread):
 
         If the wait time is exceeded, return an empty list.
         """
-        if not self.event.wait(5):
+        if not self.event.wait(wait_time):
             self.possible_actions = []
             self.event.clear()
         else:
@@ -848,7 +851,7 @@ class ActionReceiver(threading.Thread):
 
         If the wait time is exceeded, return an empty list.
         """
-        if not self.event.wait(5):
+        if not self.event.wait(wait_time):
             self.possible_actions = []
             self.event.clear()
         else:
