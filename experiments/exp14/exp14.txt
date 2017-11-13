@@ -52,7 +52,7 @@ chi_sigma = 0.1
 (default)
 
 
-test for other reward parameters and rmsprop as optimize
+test for other reward parameters and rmsprop as optimizer
 
 Finished 10000/10000 episodes after 7796.22 seconds; average: 0.78 seconds per episode
 Kraudia won 948/10000 games which is a win rate of 9.48 %
