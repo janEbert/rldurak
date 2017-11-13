@@ -57,3 +57,9 @@ exp35 loads exp26 results while this is on a raw slate
 
 Finished 5000/5000 episodes after 118971.26 seconds; average: 23.79 seconds per episode
 The neural network was trained a total of 264135 times
+
+player 1 was better!
+
+in total, player 0 lost 2952 games while player 1 lost 2048 games
+of the last 2500 games, player 0 lost 1599 while player 1 lost 901
+of the last 1000 games, player 0 lost 622 while player 1 lost 378
